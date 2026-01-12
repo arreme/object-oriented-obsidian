@@ -13,12 +13,9 @@
 	"author": "Arreme",
 	"license": "MIT",
 	"devDependencies": {
-		"@types/node": "^22.13.10",
-		"builtin-modules": "5.0.0",
-		"esbuild": "0.25.0",
 		"obsidian": "latest",
-		"tslib": "2.8.1",
-		"typescript": "5.8.2",
-		"better-sqlite3": "^11.8.1"
+		"esbuild": "latest",
+		"tslib": "latest",
+		"typescript": "latest"
 	}
 }
