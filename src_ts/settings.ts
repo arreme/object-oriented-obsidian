@@ -18,28 +18,32 @@ export class ValidationSettingTab extends PluginSettingTab {
 		// Templates section
 		containerEl.createEl('h3', { text: 'Templates' });
 		
+		// Add Template button at the top
+		new Setting(containerEl)
+			.addButton(button => button
+				.setButtonText('Add Template')
+				.setCta()
+				.onClick(async () => {
+					this.plugin.settings.templates.push({
+						templatePath: '',
+						targetFolder: ''
+					});
+					await this.plugin.saveSettings();
+					this.display();
+				}));
+		
 		this.plugin.settings.templates.forEach((template, index) => {
 			const templateDiv = containerEl.createDiv({ cls: 'template-config-compact' });
 			
-			// Single row with name and remove button
-			new Setting(templateDiv)
-				.setName('Name')
-				.addText(text => text
-					.setPlaceholder('Template name')
-					.setValue(template.name)
-					.onChange(async (value) => {
-						this.plugin.settings.templates[index].name = value;
-						await this.plugin.saveSettings();
-					}))
-				.addButton(button => button
-					.setButtonText('Remove')
-					.setWarning()
-					.onClick(async () => {
-						this.plugin.settings.templates.splice(index, 1);
-						await this.plugin.saveSettings();
-						this.display();
-					}));
-
+			// Visual title showing template filename
+			const templateName = this.getFileName(template.templatePath);
+			if (templateName) {
+				templateDiv.createEl('h4', { 
+					text: templateName,
+					cls: 'template-title'
+				});
+			}
+			
 			// Template Path with file suggestions
 			new Setting(templateDiv)
 				.setName('Template Path')
@@ -51,6 +55,7 @@ export class ValidationSettingTab extends PluginSettingTab {
 					this.addFileSuggestions(text, async (value) => {
 						this.plugin.settings.templates[index].templatePath = value;
 						await this.plugin.saveSettings();
+						this.display(); // Refresh to update the title
 					});
 				});
 
@@ -68,24 +73,21 @@ export class ValidationSettingTab extends PluginSettingTab {
 					});
 				});
 
+			// Remove button on its own line at the bottom
+			new Setting(templateDiv)
+				.addButton(button => button
+					.setButtonText('Remove')
+					.setWarning()
+					.onClick(async () => {
+						this.plugin.settings.templates.splice(index, 1);
+						await this.plugin.saveSettings();
+						this.display();
+					}));
+
 			if (index < this.plugin.settings.templates.length - 1) {
 				templateDiv.createEl('hr');
 			}
 		});
-
-		new Setting(containerEl)
-			.addButton(button => button
-				.setButtonText('Add Template')
-				.setCta()
-				.onClick(async () => {
-					this.plugin.settings.templates.push({
-						name: '',
-						templatePath: '',
-						targetFolder: ''
-					});
-					await this.plugin.saveSettings();
-					this.display();
-				}));
 
 		// PDF Settings
 		containerEl.createEl('h3', { text: 'PDF Settings' });
@@ -293,5 +295,12 @@ export class ValidationSettingTab extends PluginSettingTab {
 		});
 		
 		return folders;
+	}
+
+	getFileName(path: string): string {
+		if (!path) return '';
+		const parts = path.split('/');
+		const fileName = parts[parts.length - 1];
+		return fileName.replace(/\.md$/, '');
 	}
 }

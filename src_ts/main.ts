@@ -1,8 +1,7 @@
-import { Notice, Plugin } from 'obsidian';
+import { Plugin, Notice, SuggestModal, App, TFile } from 'obsidian';
 import { ValidationSettingTab } from './settings';
 
 export interface TemplateConfig {
-	name: string;
 	templatePath: string;
 	targetFolder: string;
 }
@@ -20,6 +19,65 @@ export const DEFAULT_SETTINGS: ValidationPluginSettings = {
 	pdfDestFolder: '',
 	pdfTemplate: ''
 };
+
+class TemplateSuggestModal extends SuggestModal<TemplateConfig> {
+	templates: TemplateConfig[];
+	onChoose: (template: TemplateConfig) => void;
+
+	constructor(app: App, templates: TemplateConfig[], onChoose: (template: TemplateConfig) => void) {
+		super(app);
+		this.templates = templates;
+		this.onChoose = onChoose;
+	}
+
+	getSuggestions(query: string): TemplateConfig[] {
+		const lowerQuery = query.toLowerCase();
+		return this.templates.filter(template => {
+			const fileName = this.getFileName(template.templatePath);
+			return fileName.toLowerCase().includes(lowerQuery);
+		});
+	}
+
+	renderSuggestion(template: TemplateConfig, el: HTMLElement) {
+		const fileName = this.getFileName(template.templatePath);
+		el.createEl("div", { text: fileName });
+	}
+
+	onChooseSuggestion(template: TemplateConfig, evt: MouseEvent | KeyboardEvent) {
+		this.onChoose(template);
+	}
+
+	getFileName(path: string): string {
+		const parts = path.split('/');
+		const fileName = parts[parts.length - 1];
+		return fileName.replace(/\.md$/, '');
+	}
+}
+
+class TitleInputModal extends SuggestModal<string> {
+	onSubmit: (title: string) => void;
+	inputEl: HTMLInputElement;
+
+	constructor(app: App, onSubmit: (title: string) => void) {
+		super(app);
+		this.onSubmit = onSubmit;
+		this.setPlaceholder("Enter note title...");
+	}
+
+	getSuggestions(query: string): string[] {
+		return [query];
+	}
+
+	renderSuggestion(value: string, el: HTMLElement) {
+		el.createEl("div", { text: value || "Enter a title..." });
+	}
+
+	onChooseSuggestion(value: string, evt: MouseEvent | KeyboardEvent) {
+		if (value.trim()) {
+			this.onSubmit(value.trim());
+		}
+	}
+}
 
 export default class ValidationPlugin extends Plugin {
 	settings: ValidationPluginSettings;
@@ -81,7 +139,12 @@ export default class ValidationPlugin extends Plugin {
 
 	// Command implementations (placeholders)
 	validateEverything() {
-		console.log('Validate Everything - Not implemented yet');
+		this.validateEverythingAsync();
+	}
+
+	async validateEverythingAsync() {
+		await this.validatePDFsAsync();
+		await this.validateTypesAsync();
 	}
 
 	validateTypes() {
@@ -94,7 +157,7 @@ export default class ValidationPlugin extends Plugin {
 
 		for (const template of this.settings.templates) {
 			if (!template.templatePath || !template.targetFolder) {
-				console.warn(`Skipping incomplete template: ${template.name}`);
+				console.warn(`Skipping incomplete template: ${template.templatePath}`);
 				continue;
 			}
 
@@ -108,7 +171,7 @@ export default class ValidationPlugin extends Plugin {
 				);
 				totalCount += count;
 			} catch (error) {
-				console.error(`Error validating template ${template.name}:`, error);
+				console.error(`Error validating template ${template.templatePath}:`, error);
 			}
 		}
 
@@ -180,7 +243,7 @@ export default class ValidationPlugin extends Plugin {
 			});
 		}
 
-		new Notice(`Validated ${fileCount} files for template: ${templatePath}`);
+		new Notice(`Validated ${fileCount} files for template: ${templateFile.basename}`);
 		return fileCount;
 	}
 
@@ -211,10 +274,148 @@ export default class ValidationPlugin extends Plugin {
 	}
 
 	validatePDFs() {
-		console.log('Validate PDFs - Not implemented yet');
+		this.validatePDFsAsync();
+	}
+
+	async validatePDFsAsync() {
+		const { vault, metadataCache, fileManager } = this.app;
+		const { pdfSourceFolder, pdfDestFolder, pdfTemplate } = this.settings;
+
+		if (!pdfSourceFolder || !pdfDestFolder || !pdfTemplate) {
+			new Notice('PDF settings are not configured');
+			return;
+		}
+
+		// Step 1: Sync existing notes with PDFs (rename PDFs to match notes)
+		const targetFiles = vault.getFiles().filter(file => 
+			file.path.startsWith(pdfDestFolder) && file.extension === 'md'
+		);
+
+		let renamedCount = 0;
+		for (const target of targetFiles) {
+			const noteName = target.basename;
+			
+			// Read frontmatter
+			const cache = metadataCache.getFileCache(target);
+			if (!cache?.frontmatter?.['resource-link']) {
+				console.warn(`resource-link not found in ${noteName}`);
+				continue;
+			}
+
+			// Extract link target from [[...]]
+			const link = cache.frontmatter['resource-link'];
+			const match = link.match(/\[\[(.+?)\]\]/);
+			if (!match) {
+				console.warn(`Invalid resource-link format in ${noteName}`);
+				continue;
+			}
+
+			const oldPath = match[1];
+			const newPath = oldPath.replace(/[^/]+\.pdf$/, `${noteName}.pdf`);
+			if (oldPath === newPath) continue;
+
+			const pdfFile = vault.getAbstractFileByPath(oldPath);
+			if (!pdfFile) {
+				console.warn(`Target PDF not found for ${noteName}`);
+				continue;
+			}
+
+			try {
+				await vault.rename(pdfFile, newPath);
+				await fileManager.processFrontMatter(target, fm => {
+					fm['resource-link'] = `[[${newPath}]]`;
+				});
+				renamedCount++;
+			} catch (error) {
+				console.error(`Error renaming PDF for ${noteName}:`, error);
+			}
+		}
+
+		new Notice(`Renamed ${renamedCount} PDF(s)`);
+
+		// Step 2: Create notes for PDFs that don't have one
+		const sourceFiles = vault.getFiles().filter(file => 
+			file.path.startsWith(pdfSourceFolder + '/') && file.extension === 'pdf'
+		);
+
+		const templateFile = vault.getAbstractFileByPath(pdfTemplate);
+		if (!templateFile || !(templateFile instanceof TFile)) {
+			new Notice(`Template not found: ${pdfTemplate}`);
+			return;
+		}
+
+		const template = await vault.read(templateFile);
+		let createdCount = 0;
+
+		for (const file of sourceFiles) {
+			const fileName = file.basename;
+			const targetPath = `${pdfDestFolder}/${fileName}.md`;
+
+			// Check if target note already exists
+			if (vault.getAbstractFileByPath(targetPath)) continue;
+
+			// Create content using template + reference
+			const sourceLink = file.path;
+			let newContent = template
+				.replace(/resource-link:/g, `resource-link: "[[${sourceLink}]]"`)
+				.replace(/resource-type:/g, 'resource-type: pdf');
+
+			try {
+				await vault.create(targetPath, newContent);
+				new Notice(`Created PDF note: ${fileName}`);
+				createdCount++;
+			} catch (error) {
+				console.error(`Error creating note for ${fileName}:`, error);
+			}
+		}
+
+		new Notice(`Created ${createdCount} PDF note(s)`);
 	}
 
 	createObject() {
-		console.log('Create Object - Not implemented yet');
+		new TemplateSuggestModal(this.app, this.settings.templates, async (template: TemplateConfig) => {
+			await this.createObjectFromTemplate(template);
+		}).open();
+	}
+
+	async createObjectFromTemplate(template: TemplateConfig) {
+		const { vault, metadataCache, fileManager, workspace } = this.app;
+
+		// Get template file
+		const templateFile = vault.getAbstractFileByPath(template.templatePath);
+		if (!templateFile || !(templateFile instanceof TFile)) {
+			new Notice(`Template not found: ${template.templatePath}`);
+			return;
+		}
+
+		// Read template content
+		const templateContent = await vault.read(templateFile);
+
+		// Prompt for note title
+		const title = await this.promptForTitle();
+		if (!title) return;
+
+		// Create the file in the target folder
+		const filePath = `${template.targetFolder}/${title}.md`;
+		
+		try {
+			const file = await vault.create(filePath, templateContent);
+			new Notice(`Created: ${title}`);
+
+			// Open the file
+			const leaf = workspace.getLeaf(false);
+			await leaf.openFile(file);
+		} catch (error) {
+			new Notice(`Error creating file: ${(error as Error).message}`);
+		}
+	}
+
+	async promptForTitle(): Promise<string | null> {
+		return new Promise((resolve) => {
+			const modal = new TitleInputModal(this.app, (title: string) => {
+				resolve(title);
+			});
+			modal.open();
+		});
 	}
 }
