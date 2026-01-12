@@ -1,9 +1,8 @@
-# Obsiditero
-An efficient way to synchronize your resource notes in Zotero to Obsidian.
-It's a minimal plugin which tries to has obsidian design goals in mind:
-- Minimal config
-- Only Markdown
-- Efficient
+# Object Oriented Obsidian (OOO)
+A minimalistic plugin to have an AnyType workflow for Obsidian. Define Objects and validate the types through out your vault. Objects reside in a target folder.
+Todo:
+- Define properties within the config, not through templates.
+- PDF Organization also included.
 # Contributing
 A Dockerfile and .devcontainer has been provided.
 You only need to run:
