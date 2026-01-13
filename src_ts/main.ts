@@ -1,4 +1,4 @@
-import { Plugin, Notice, TFile } from 'obsidian';
+import { Plugin } from 'obsidian';
 import { ValidationSettingTab } from './settings';
 import { ValidationPluginSettings, DEFAULT_SETTINGS } from './config_data';
 import { CreateObjectHandler } from './Commands/create_object';
@@ -64,7 +64,7 @@ export default class ValidationPlugin extends Plugin {
 		await this.saveData(this.settings);
 	}
 
-	
+
 	validateEverything() {
 		this.validateEverythingAsync();
 	}
