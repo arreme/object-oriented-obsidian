@@ -1,6 +1,7 @@
 import { App, PluginSettingTab, Setting, TFolder, TextComponent } from 'obsidian';
 import ValidationPlugin from './main';
 import { Suggester } from './suggester';
+import { FolderSuggest } from './abstract_suggester';
 
 export class ValidationSettingTab extends PluginSettingTab {
 	plugin: ValidationPlugin;
@@ -16,15 +17,16 @@ export class ValidationSettingTab extends PluginSettingTab {
 		const { containerEl } = this;
 		containerEl.empty();
 
-		containerEl.createEl('h2', { text: 'Template Validation Settings' });
+		containerEl.createEl('h1', { text: 'Object Oriented Obsidian Settings' });
 
 		// Templates section
-		containerEl.createEl('h3', { text: 'Templates' });
+		containerEl.createEl('h2', { text: 'Object Definitions' });
 		
-		// Add Template button at the top
+		this.createArraySettings(containerEl);
+
 		new Setting(containerEl)
 			.addButton(button => button
-				.setButtonText('Add Template')
+				.setButtonText('Add Object')
 				.setCta()
 				.onClick(async () => {
 					this.plugin.settings.templates.push({
@@ -34,12 +36,14 @@ export class ValidationSettingTab extends PluginSettingTab {
 					await this.plugin.saveSettings();
 					this.display();
 				}));
-		
-		this.createArraySettings(containerEl);
 
 		// PDF Settings
-		containerEl.createEl('h3', { text: 'PDF Settings' });
+		containerEl.createEl('h2', { text: 'PDF Validation Settings' });
 
+		this.pdfSettings(containerEl);
+	}
+
+	private pdfSettings(containerEl: HTMLElement) {
 		new Setting(containerEl)
 			.setName('PDF Source Folder')
 			.setDesc('Folder to scan for PDFs')
@@ -72,9 +76,20 @@ export class ValidationSettingTab extends PluginSettingTab {
 					this.plugin.settings.pdfTemplate = value;
 					await this.plugin.saveSettings();
 				}));
+		new Setting(containerEl)  
+			.setName('Search')  
+			.addSearch(search => {  
+			search.setValue(this.plugin.settings.testSetting)  
+				.setPlaceholder('Search for an icon')  
+				.onChange(async (value) => {  
+					this.plugin.settings.testSetting = value;  
+					await this.plugin.saveSettings();  
+				});  
+			new FolderSuggest(this.plugin.app, search.inputEl);  
+			});
 	}
 
-	createArraySettings(containerEl: HTMLElement) {
+	private createArraySettings(containerEl: HTMLElement) {
 		this.plugin.settings.templates.forEach((template, index) => {
 			const templateDiv = containerEl.createDiv({ cls: 'template-config-compact' });
 			
