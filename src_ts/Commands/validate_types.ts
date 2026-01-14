@@ -13,8 +13,8 @@ export class ValidateTypes {
         let totalCount = 0;
 
         for (const template of settings.templates) {
-            if (!template.templatePath || !template.targetFolder) {
-                console.warn(`Skipping incomplete template: ${template.templatePath}`);
+            if (!template.objectTemplate || !template.targetFolder) {
+                console.warn(`Skipping incomplete template: ${this.getFolderName(template.targetFolder)}`);
                 continue;
             }
 
@@ -23,12 +23,12 @@ export class ValidateTypes {
                     vault,
                     metadataCache,
                     fileManager,
-                    template.templatePath,
+                    template.objectTemplate,
                     template.targetFolder
                 );
                 totalCount += count;
             } catch (error) {
-                console.error(`Error validating template ${template.templatePath}:`, error);
+                console.error(`Error validating template ${this.getFolderName(template.targetFolder)}:`, error);
             }
         }
 
@@ -39,28 +39,15 @@ export class ValidateTypes {
         vault: any,
         metadataCache: any,
         fileManager: any,
-        templatePath: string,
+        templateContent: string,
         targetFolder: string
     ): Promise<number> {
-        // Get template file
-        const templateFile = vault.getAbstractFileByPath(templatePath);
-        if (!templateFile) {
-            throw new Error(`Template file not found: ${templatePath}`);
-        }
-
-        // Get template frontmatter
-        const templateCache = metadataCache.getFileCache(templateFile);
-        const templateFM = templateCache?.frontmatter;
-        if (!templateFM) {
-            throw new Error(`Template has no YAML frontmatter: ${templatePath}`);
-        }
-
-        // Read template content and extract ordered keys
-        const templateContent = await vault.read(templateFile);
+        // Extract ordered keys and default values from template content
         const orderedKeys = this.extractOrderedKeysFromFrontmatter(templateContent);
+        const templateFM = this.extractFrontmatterValues(templateContent);
 
         if (orderedKeys.length === 0) {
-            console.warn(`No keys found in template: ${templatePath}`);
+            console.warn(`No keys found in template for folder: ${this.getFolderName(targetFolder)}`);
             return 0;
         }
 
@@ -100,7 +87,7 @@ export class ValidateTypes {
             });
         }
 
-        new Notice(`Validated ${fileCount} files for template: ${templateFile.basename}`);
+        new Notice(`Validated ${fileCount} files for folder: ${this.getFolderName(targetFolder)}`);
         return fileCount;
     }
 
@@ -128,5 +115,49 @@ export class ValidateTypes {
         }
 
         return keys;
+    }
+
+    extractFrontmatterValues(content: string): Record<string, any> {
+        if (!content.startsWith("---")) return {};
+
+        const end = content.indexOf("\n---", 3);
+        if (end === -1) return {};
+
+        const yamlBlock = content.slice(3, end).trim();
+        const lines = yamlBlock.split("\n");
+        const values: Record<string, any> = {};
+
+        for (const line of lines) {
+            // Ignore array items and empty lines
+            if (!line || line.startsWith("  -")) continue;
+
+            // Top-level key only (not indented)
+            if (!line.startsWith(" ")) {
+                const idx = line.indexOf(":");
+                if (idx !== -1) {
+                    const key = line.slice(0, idx).trim();
+                    let value = line.slice(idx + 1).trim();
+                    
+                    // Parse value
+                    if (value === '') {
+                        values[key] = '';
+                    } else if (value.startsWith('"') && value.endsWith('"')) {
+                        values[key] = value.slice(1, -1);
+                    } else if (!isNaN(Number(value))) {
+                        values[key] = Number(value);
+                    } else {
+                        values[key] = value;
+                    }
+                }
+            }
+        }
+
+        return values;
+    }
+
+    private getFolderName(path: string): string {
+        if (!path) return '';
+        const parts = path.split('/');
+        return parts[parts.length - 1];
     }
 }
