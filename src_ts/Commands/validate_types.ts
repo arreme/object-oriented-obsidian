@@ -1,4 +1,4 @@
-import { App, Notice } from 'obsidian';
+import { App, Notice, parseYaml } from 'obsidian';
 import { ValidationPluginSettings } from 'src_ts/Settings/config_data';
 
 export class ValidateTypes {
@@ -9,7 +9,7 @@ export class ValidateTypes {
     }
 
     async validateTypesAsync(settings: ValidationPluginSettings) {
-        const { vault, metadataCache, fileManager } = this.app;
+        const { vault, fileManager } = this.app;
         let totalCount = 0;
 
         for (const template of settings.templates) {
@@ -21,7 +21,6 @@ export class ValidateTypes {
             try {
                 const count = await this.validateTemplate(
                     vault,
-                    metadataCache,
                     fileManager,
                     template.objectTemplate,
                     template.targetFolder
@@ -35,16 +34,15 @@ export class ValidateTypes {
         new Notice(`Validation complete. Reviewed ${totalCount} files.`);
     }
 
-    async validateTemplate(
-        vault: any,
-        metadataCache: any,
-        fileManager: any,
-        templateContent: string,
-        targetFolder: string
-    ): Promise<number> {
-        // Extract ordered keys and default values from template content
+    private async validateTemplate(vault: any, fileManager: any, templateContent: string, targetFolder: string): Promise<number> {
+        // Parse template frontmatter using Obsidian's built-in parser
+        const templateFM = this.parseFrontmatterWithObsidian(templateContent);
+        if (!templateFM) {
+            throw new Error(`Template has no valid YAML frontmatter for folder: ${this.getFolderName(targetFolder)}`);
+        }
+
+        // Extract ordered keys from template content
         const orderedKeys = this.extractOrderedKeysFromFrontmatter(templateContent);
-        const templateFM = this.extractFrontmatterValues(templateContent);
 
         if (orderedKeys.length === 0) {
             console.warn(`No keys found in template for folder: ${this.getFolderName(targetFolder)}`);
@@ -87,11 +85,29 @@ export class ValidateTypes {
             });
         }
 
-        new Notice(`Validated ${fileCount} files for folder: ${this.getFolderName(targetFolder)}`);
+        new Notice(`Validated ${fileCount} files for template: ${this.getFolderName(targetFolder)}`);
         return fileCount;
     }
 
-    extractOrderedKeysFromFrontmatter(content: string): string[] {
+    private parseFrontmatterWithObsidian(content: string): Record<string, any> | null {
+        if (!content.startsWith("---")) return null;
+
+        const end = content.indexOf("\n---", 3);
+        if (end === -1) return null;
+
+        const yamlBlock = content.slice(3, end).trim();
+
+        try {
+            // Use Obsidian's built-in YAML parser
+            const parsed = parseYaml(yamlBlock);
+            return parsed || {};
+        } catch (error) {
+            console.error("Error parsing YAML:", error);
+            return null;
+        }
+    }
+
+    private extractOrderedKeysFromFrontmatter(content: string): string[] {
         if (!content.startsWith("---")) return [];
 
         const end = content.indexOf("\n---", 3);
@@ -115,44 +131,6 @@ export class ValidateTypes {
         }
 
         return keys;
-    }
-
-    extractFrontmatterValues(content: string): Record<string, any> {
-        if (!content.startsWith("---")) return {};
-
-        const end = content.indexOf("\n---", 3);
-        if (end === -1) return {};
-
-        const yamlBlock = content.slice(3, end).trim();
-        const lines = yamlBlock.split("\n");
-        const values: Record<string, any> = {};
-
-        for (const line of lines) {
-            // Ignore array items and empty lines
-            if (!line || line.startsWith("  -")) continue;
-
-            // Top-level key only (not indented)
-            if (!line.startsWith(" ")) {
-                const idx = line.indexOf(":");
-                if (idx !== -1) {
-                    const key = line.slice(0, idx).trim();
-                    let value = line.slice(idx + 1).trim();
-                    
-                    // Parse value
-                    if (value === '') {
-                        values[key] = '';
-                    } else if (value.startsWith('"') && value.endsWith('"')) {
-                        values[key] = value.slice(1, -1);
-                    } else if (!isNaN(Number(value))) {
-                        values[key] = Number(value);
-                    } else {
-                        values[key] = value;
-                    }
-                }
-            }
-        }
-
-        return values;
     }
 
     private getFolderName(path: string): string {

@@ -1,5 +1,4 @@
-
-import { App, Notice, SuggestModal, TFile } from 'obsidian';
+import { App, Notice, SuggestModal, Modal, Setting } from 'obsidian';
 import { TemplateConfig } from '../Settings/config_data';
 
 export class CreateObjectHandler {
@@ -10,23 +9,34 @@ export class CreateObjectHandler {
 	}
 
 	async execute(templates: TemplateConfig[]) {
-		new TemplateSuggestModal(this.app, templates, async (template: TemplateConfig) => {
+		// Filter out templates without targetFolder
+		const validTemplates = templates.filter(t => t.targetFolder && t.targetFolder.trim());
+		
+		if (validTemplates.length === 0) {
+			new Notice('No valid templates configured. Please set target folders in settings.');
+			return;
+		}
+		
+		new TemplateSuggestModal(this.app, validTemplates, async (template: TemplateConfig) => {
 			await this.createObjectFromTemplate(template);
 		}).open();
 	}
 
 	async createObjectFromTemplate(template: TemplateConfig) {
-		const { vault, metadataCache, fileManager, workspace } = this.app;
+		const { vault, workspace } = this.app;
 
-		// Get template file
-		const templateFile = vault.getAbstractFileByPath(template.templatePath);
-		if (!templateFile || !(templateFile instanceof TFile)) {
-			new Notice(`Template not found: ${template.templatePath}`);
+		// Use the template content directly
+		const templateContent = template.objectTemplate;
+		if (!templateContent || !templateContent.trim()) {
+			new Notice(`Template content is empty for: ${this.getFolderName(template.targetFolder)}`);
 			return;
 		}
 
-		// Read template content
-		const templateContent = await vault.read(templateFile);
+		// Validate target folder
+		if (!template.targetFolder) {
+			new Notice(`Target folder not set for template`);
+			return;
+		}
 
 		// Prompt for note title
 		const title = await this.promptForTitle();
@@ -55,6 +65,12 @@ export class CreateObjectHandler {
 			modal.open();
 		});
 	}
+
+	private getFolderName(path: string): string {
+		if (!path) return '';
+		const parts = path.split('/');
+		return parts[parts.length - 1];
+	}
 }
 
 class TemplateSuggestModal extends SuggestModal<TemplateConfig> {
@@ -70,48 +86,88 @@ class TemplateSuggestModal extends SuggestModal<TemplateConfig> {
     getSuggestions(query: string): TemplateConfig[] {
         const lowerQuery = query.toLowerCase();
         return this.templates.filter(template => {
-            const fileName = this.getFileName(template.templatePath);
-            return fileName.toLowerCase().includes(lowerQuery);
+            const folderName = this.getFolderName(template.targetFolder);
+            return folderName.toLowerCase().includes(lowerQuery);
         });
     }
 
     renderSuggestion(template: TemplateConfig, el: HTMLElement) {
-        const fileName = this.getFileName(template.templatePath);
-        el.createEl("div", { text: fileName });
+        const folderName = this.getFolderName(template.targetFolder);
+        el.createEl("div", { text: folderName });
     }
 
     onChooseSuggestion(template: TemplateConfig, evt: MouseEvent | KeyboardEvent) {
         this.onChoose(template);
     }
 
-    getFileName(path: string): string {
+    getFolderName(path: string): string {
+        if (!path) return '';
         const parts = path.split('/');
-        const fileName = parts[parts.length - 1];
-        return fileName.replace(/\.md$/, '');
+        return parts[parts.length - 1];
     }
 }
 
-class TitleInputModal extends SuggestModal<string> {
+class TitleInputModal extends Modal {
     onSubmit: (title: string) => void;
-    inputEl: HTMLInputElement;
+    titleInput: HTMLInputElement;
 
     constructor(app: App, onSubmit: (title: string) => void) {
         super(app);
         this.onSubmit = onSubmit;
-        this.setPlaceholder("Enter note title...");
     }
 
-    getSuggestions(query: string): string[] {
-        return [query];
+    onOpen() {
+        const { contentEl } = this;
+        
+        contentEl.createEl("h2", { text: "Create new note" });
+
+        new Setting(contentEl)
+            .setName("Note title")
+            .addText(text => {
+                this.titleInput = text.inputEl;
+                text.setPlaceholder("Enter note title...")
+                    .onChange(value => {
+                        // Optional: could add validation here
+                    });
+                
+                // Focus the input and select on Enter
+                text.inputEl.addEventListener("keydown", (e) => {
+                    if (e.key === "Enter") {
+                        e.preventDefault();
+                        this.submit();
+                    }
+                });
+            });
+
+        new Setting(contentEl)
+            .addButton(btn => btn
+                .setButtonText("Create")
+                .setCta()
+                .onClick(() => {
+                    this.submit();
+                }))
+            .addButton(btn => btn
+                .setButtonText("Cancel")
+                .onClick(() => {
+                    this.close();
+                }));
+
+        // Focus the input after a short delay
+        setTimeout(() => {
+            this.titleInput.focus();
+        }, 10);
     }
 
-    renderSuggestion(value: string, el: HTMLElement) {
-        el.createEl("div", { text: value || "Enter a title..." });
-    }
-
-    onChooseSuggestion(value: string, evt: MouseEvent | KeyboardEvent) {
-        if (value.trim()) {
-            this.onSubmit(value.trim());
+    submit() {
+        const title = this.titleInput.value.trim();
+        if (title) {
+            this.onSubmit(title);
+            this.close();
         }
+    }
+
+    onClose() {
+        const { contentEl } = this;
+        contentEl.empty();
     }
 }

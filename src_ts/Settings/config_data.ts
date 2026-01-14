@@ -1,7 +1,8 @@
 export interface TemplateConfig {
 	folded: boolean;
-	templatePath: string;
 	targetFolder: string;
+	objectTemplate: string;
+	
 }
 
 export interface ValidationPluginSettings {

@@ -28,8 +28,8 @@ export class ValidationSettingTab extends PluginSettingTab {
 				.onClick(async () => {
 					this.plugin.settings.templates.push({
 						folded: false,
-						templatePath: '',
-						targetFolder: ''
+						targetFolder: '',
+						objectTemplate: '',
 					});
 					await this.plugin.saveSettings();
 					this.display();
@@ -81,7 +81,6 @@ export class ValidationSettingTab extends PluginSettingTab {
 				search.setValue(this.plugin.settings.pdfTemplate)
 					.setPlaceholder('Search a template')  
 					.onChange(async (value) => { 
-						console.log("AAAB");
 						this.plugin.settings.pdfTemplate = value; 
 						await this.plugin.saveSettings();
 					}
@@ -102,13 +101,11 @@ export class ValidationSettingTab extends PluginSettingTab {
 		// ── Header (fold toggle lives here)
 		const titleRow = templateDiv.createDiv({ cls: 'template-title-row' });
 
-		const templateName = this.getFileName(template.templatePath);
+		const templateName = this.getFolderName(template.targetFolder);
 		const titleElement = titleRow.createEl('div', {
 			text: templateName || `Object ${index + 1}`,
 			cls: 'template-title'
 		});
-
-		// Fold state (local, visual only)
 
 		titleRow.onClickEvent(async (evt) => {
 			// Prevent toggle when clicking the Remove button
@@ -135,21 +132,6 @@ export class ValidationSettingTab extends PluginSettingTab {
 		bodyDiv.toggleClass('is-collapsed', this.plugin.settings.templates[index].folded);
 
 		new Setting(bodyDiv)
-			.setName('Object Path')
-			.setDesc('Object source template')
-			.addSearch(search => {
-				new FileSuggest(this.plugin.app, search.inputEl);
-
-				search.setValue(template.templatePath)
-					.setPlaceholder('path/to/template.md')
-					.onChange(async (value) => {
-						this.plugin.settings.templates[index].templatePath = value;
-						await this.plugin.saveSettings();
-						titleElement.textContent = this.getFileName(value) || `Object ${index + 1}`;
-					});
-			});
-
-		new Setting(bodyDiv)
 			.setName('Target Folder')
 			.setDesc('Folder to check object validity')
 			.addSearch(search => {
@@ -160,7 +142,22 @@ export class ValidationSettingTab extends PluginSettingTab {
 					.onChange(async (value) => {
 						this.plugin.settings.templates[index].targetFolder = normalizePath(value.trim());
 						await this.plugin.saveSettings();
+						titleElement.textContent = this.getFolderName(value) || `Object ${index + 1}`;
 					});
+			});
+
+		new Setting(bodyDiv)
+			.setName('Object Template')
+			.setDesc('Paste the template content (frontmatter)')
+			.addTextArea(textArea => {
+				textArea.setValue(template.objectTemplate)
+					.setPlaceholder('---\nhiking-start:\nhiking-difficulty:\n---')
+					.onChange(async (value) => {
+						this.plugin.settings.templates[index].objectTemplate = value;
+						await this.plugin.saveSettings();
+					});
+				textArea.inputEl.rows = 10;
+				textArea.inputEl.cols = 50;
 			});
 
 		if (index < this.plugin.settings.templates.length - 1) {
@@ -168,10 +165,9 @@ export class ValidationSettingTab extends PluginSettingTab {
 		}
 	}
 
-	private getFileName(path: string): string {
+	private getFolderName(path: string): string {
 		if (!path) return '';
 		const parts = path.split('/');
-		const fileName = parts[parts.length - 1];
-		return fileName.replace(/\.md$/, '');
+		return parts[parts.length - 1];
 	}
 }
