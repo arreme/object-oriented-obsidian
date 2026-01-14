@@ -84,7 +84,7 @@ export class ValidateTypes {
                 fileCount++;
             });
         }
-
+        
         new Notice(`Validated ${fileCount} files for template: ${this.getFolderName(targetFolder)}`);
         return fileCount;
     }

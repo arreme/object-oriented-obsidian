@@ -1,5 +1,6 @@
 export interface TemplateConfig {
 	folded: boolean;
+	createNotes: boolean;
 	targetFolder: string;
 	objectTemplate: string;
 	

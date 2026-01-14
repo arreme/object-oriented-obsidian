@@ -30,6 +30,7 @@ export class ValidationSettingTab extends PluginSettingTab {
 						folded: false,
 						targetFolder: '',
 						objectTemplate: '',
+						createNotes: true,
 					});
 					await this.plugin.saveSettings();
 					this.display();
@@ -158,6 +159,17 @@ export class ValidationSettingTab extends PluginSettingTab {
 					});
 				textArea.inputEl.rows = 10;
 				textArea.inputEl.cols = 50;
+			});
+		
+		new Setting(bodyDiv)
+			.setName('Appear in object creation')
+			.setDesc('Tell if you want this object to appear in the object creation modal')
+			.addToggle(toggle => {
+				toggle.setValue(template.createNotes)
+					.onChange(async (value) => {
+						this.plugin.settings.templates[index].createNotes = value;
+						await this.plugin.saveSettings();
+					});
 			});
 
 		if (index < this.plugin.settings.templates.length - 1) {

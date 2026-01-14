@@ -10,7 +10,7 @@ export class CreateObjectHandler {
 
 	async execute(templates: TemplateConfig[]) {
 		// Filter out templates without targetFolder
-		const validTemplates = templates.filter(t => t.targetFolder && t.targetFolder.trim());
+		const validTemplates = templates.filter(t => t.createNotes && t.targetFolder && t.targetFolder.trim());
 		
 		if (validTemplates.length === 0) {
 			new Notice('No valid templates configured. Please set target folders in settings.');
