@@ -5,6 +5,23 @@
     margin-bottom: 16px;
 }
 
+.add-object-container {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.add-object-container h3 {
+    margin: 0px;
+}
+
+.add-object-container .setting-item {
+	padding: 0;
+	margin: 0;
+	border: none;
+	background-color: transparent;
+}
+
 .template-title-row .setting-item {
 	padding: 0;
 	margin: 0;
@@ -18,10 +35,10 @@
     align-items: center;
     margin-bottom: 8px;
     padding: 10px;
-    background-color: var(--setting-items-background);
-    border-radius: var(--setting-items-radius);
+    /* background-color: var(--setting-items-background); */
+    /* border-radius: var(--setting-items-radius); */
     font-weight: bold;
-	border: var(--setting-items-border-width) solid var(--setting-items-border-color);
+	/* border: var(--setting-items-border-width) solid var(--setting-items-border-color); */
 }
 
 /* Prevent h3 from forcing line breaks */

@@ -15,14 +15,13 @@ export class ValidationSettingTab extends PluginSettingTab {
 		const { containerEl } = this;
 		containerEl.empty();
 
-		containerEl.createEl('h1', { text: 'Object Oriented Obsidian Settings' });
+		containerEl.createEl('h2', { text: 'Object Oriented Obsidian Settings' });
 
 		// Templates section
-		containerEl.createEl('h2', { text: 'Object Definitions' });
-		
-		this.createArraySettings(containerEl);
+		const tittleContainer = containerEl.createDiv({ cls: 'add-object-container' });
+		tittleContainer.createEl('h3', { text: 'Object Definitions' });
 
-		new Setting(containerEl)
+		new Setting(tittleContainer)
 			.addButton(button => button
 				.setButtonText('Add Object')
 				.setCta()
@@ -34,12 +33,14 @@ export class ValidationSettingTab extends PluginSettingTab {
 					await this.plugin.saveSettings();
 					this.display();
 				}));
+		
+		this.createArraySettings(containerEl);
 
 		this.pdfSettings(containerEl);
 	}
 
 	private pdfSettings(containerEl: HTMLElement) {
-		containerEl.createEl('h2', { text: 'PDF Validation Settings' });
+		containerEl.createEl('h3', { text: 'PDF Validation Settings' });
 
 		new Setting(containerEl)  
 			.setName('PDF Source Folder')
