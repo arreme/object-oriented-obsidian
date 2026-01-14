@@ -1,5 +1,5 @@
 import { App, Notice, TFile } from 'obsidian';
-import { ValidationPluginSettings } from 'src_ts/config_data';
+import { ValidationPluginSettings } from 'src_ts/Settings/config_data';
 
 export class ValidatePDF {
     app: App;

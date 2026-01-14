@@ -1,6 +1,6 @@
 
 import { App, Notice, SuggestModal, TFile } from 'obsidian';
-import { TemplateConfig } from '../config_data';
+import { TemplateConfig } from '../Settings/config_data';
 
 export class CreateObjectHandler {
 	app: App;

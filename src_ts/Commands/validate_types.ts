@@ -1,5 +1,5 @@
 import { App, Notice } from 'obsidian';
-import { ValidationPluginSettings } from 'src_ts/config_data';
+import { ValidationPluginSettings } from 'src_ts/Settings/config_data';
 
 export class ValidateTypes {
     app: App;

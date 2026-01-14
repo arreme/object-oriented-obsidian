@@ -1,6 +1,6 @@
 import { Plugin } from 'obsidian';
-import { ValidationSettingTab } from './settings';
-import { ValidationPluginSettings, DEFAULT_SETTINGS } from './config_data';
+import { ValidationSettingTab } from './Settings/settings';
+import { ValidationPluginSettings, DEFAULT_SETTINGS } from './Settings/config_data';
 import { CreateObjectHandler } from './Commands/create_object';
 import { ValidatePDF } from './Commands/validate_pdfs';
 import { ValidateTypes } from './Commands/validate_types';

@@ -1,8 +1,33 @@
-/*
+/* Main template container spacing */
+.template-container {
+    padding-right: 5%;
+    padding-left: 5%;
+    margin-bottom: 16px;
+}
 
-This CSS file will be included with your plugin, and
-available in the app when your plugin is enabled.
+.template-title-row .setting-item {
+	padding: 0;
+	margin: 0;
+	border: none;
+	background-color: transparent;
+}
 
-If your plugin does not need CSS, delete this file.
+/* Title + remove button layout */
+.template-title-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	margin-bottom: 8px;
+}
 
-*/
+/* Prevent h3 from forcing line breaks */
+.template-title {
+	margin: 0;
+	flex: 1;
+}
+
+/* Ensure all Obsidian Setting rows respect right margin */
+.template-container .setting-item {
+	padding-right: 8px;
+}
