@@ -1,14 +1,15 @@
-/* Main template container spacing */
 .template-container {
     padding-right: 5%;
     padding-left: 5%;
-    margin-bottom: 16px;
 }
 
 .add-object-container {
     display: flex;
     align-items: center;
-    margin-bottom: 8px;
+}
+
+.template-body.is-collapsed {
+	display: none;
 }
 
 .add-object-container h3 {
@@ -29,25 +30,25 @@
 	background-color: transparent;
 }
 
+.template-container hr{
+    margin: 0px;
+}
+
 /* Title + remove button layout */
 .template-title-row {
 	display: flex;
     align-items: center;
-    margin-bottom: 8px;
     padding: 10px;
-    /* background-color: var(--setting-items-background); */
-    /* border-radius: var(--setting-items-radius); */
+	justify-content: space-between;
+	cursor: pointer;
     font-weight: bold;
-	/* border: var(--setting-items-border-width) solid var(--setting-items-border-color); */
 }
 
-/* Prevent h3 from forcing line breaks */
 .template-title {
 	margin: 0;
 	flex: 1;
 }
 
-/* Ensure all Obsidian Setting rows respect right margin */
 .template-container .setting-item {
 	padding-right: 8px;
 }

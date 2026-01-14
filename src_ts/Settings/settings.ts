@@ -27,6 +27,7 @@ export class ValidationSettingTab extends PluginSettingTab {
 				.setCta()
 				.onClick(async () => {
 					this.plugin.settings.templates.push({
+						folded: false,
 						templatePath: '',
 						targetFolder: ''
 					});
@@ -97,12 +98,25 @@ export class ValidationSettingTab extends PluginSettingTab {
 
 	private processTemplate(containerEl: HTMLElement, template: TemplateConfig, index: number) {
 		const templateDiv = containerEl.createDiv({ cls: 'template-container' });
+
+		// ── Header (fold toggle lives here)
 		const titleRow = templateDiv.createDiv({ cls: 'template-title-row' });
 
 		const templateName = this.getFileName(template.templatePath);
 		const titleElement = titleRow.createEl('div', {
-			text: templateName ?? "",
+			text: templateName || `Object ${index + 1}`,
 			cls: 'template-title'
+		});
+
+		// Fold state (local, visual only)
+
+		titleRow.onClickEvent(async (evt) => {
+			// Prevent toggle when clicking the Remove button
+			if ((evt.target as HTMLElement).closest('button')) return;
+
+			this.plugin.settings.templates[index].folded = !template.folded;
+			await this.plugin.saveSettings();
+			bodyDiv.toggleClass('is-collapsed', this.plugin.settings.templates[index].folded);
 		});
 
 		new Setting(titleRow)
@@ -116,7 +130,11 @@ export class ValidationSettingTab extends PluginSettingTab {
 				})
 			);
 
-		new Setting(templateDiv)
+		// ── Body (foldable content)
+		const bodyDiv = templateDiv.createDiv({ cls: 'template-body' });
+		bodyDiv.toggleClass('is-collapsed', this.plugin.settings.templates[index].folded);
+
+		new Setting(bodyDiv)
 			.setName('Object Path')
 			.setDesc('Object source template')
 			.addSearch(search => {
@@ -127,12 +145,11 @@ export class ValidationSettingTab extends PluginSettingTab {
 					.onChange(async (value) => {
 						this.plugin.settings.templates[index].templatePath = value;
 						await this.plugin.saveSettings();
-						const templateName = this.getFileName(value);
-						titleElement.textContent = templateName ?? "";
+						titleElement.textContent = this.getFileName(value) || `Object ${index + 1}`;
 					});
 			});
 
-		new Setting(templateDiv)
+		new Setting(bodyDiv)
 			.setName('Target Folder')
 			.setDesc('Folder to check object validity')
 			.addSearch(search => {
@@ -145,7 +162,6 @@ export class ValidationSettingTab extends PluginSettingTab {
 						await this.plugin.saveSettings();
 					});
 			});
-
 
 		if (index < this.plugin.settings.templates.length - 1) {
 			templateDiv.createEl('hr');

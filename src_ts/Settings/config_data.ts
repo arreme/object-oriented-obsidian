@@ -1,4 +1,5 @@
 export interface TemplateConfig {
+	folded: boolean;
 	templatePath: string;
 	targetFolder: string;
 }
