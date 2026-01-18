@@ -1,11 +1,11 @@
 {
 	"id": "object-oriented-obsidian",
-	"name": "OOO",
+	"name": "Object Oriented Obsidian",
 	"version": "1.0.0",
 	"minAppVersion": "0.15.0",
-	"description": "Demonstrates some of the capabilities of the Obsidian API.",
+	"description": "A simple obsidian plugin that lets you treat your notes as objects, making property consistency completely trivial",
 	"author": "Arreme",
-	"authorUrl": "https://obsidian.md",
-	"fundingUrl": "https://obsidian.md/pricing",
+	"authorUrl": "https://arreme.dev/",
+	"fundingUrl": "https://buymeacoffee.com/arremedev",
 	"isDesktopOnly": false
 }
