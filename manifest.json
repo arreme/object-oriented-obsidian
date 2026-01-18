@@ -3,7 +3,7 @@
 	"name": "Object Oriented Obsidian",
 	"version": "1.0.0",
 	"minAppVersion": "0.15.0",
-	"description": "A simple obsidian plugin that lets you treat your notes as objects, making property consistency completely trivial",
+	"description": "A simple obsidian plugin that lets you treat your notes as objects, making property consistency completely trivial.",
 	"author": "Arreme",
 	"authorUrl": "https://arreme.dev/",
 	"fundingUrl": "https://buymeacoffee.com/arremedev",
