@@ -5,8 +5,8 @@ export enum COLLECT_TYPE{
 
 export interface TemplateConfig {
 	folded: boolean;
-	object_name: string;
-	collect_type: number;
+	objectName: string;
+	collectType: number;
 	createNotes: boolean;
 	targetFolder: string;
 	objectTemplate: string;

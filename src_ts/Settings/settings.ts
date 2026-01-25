@@ -28,8 +28,8 @@ export class ValidationSettingTab extends PluginSettingTab {
 				.onClick(async () => {
 					this.plugin.settings.templates.push({
 						folded: false,
-						object_name: '',
-						collect_type: COLLECT_TYPE.T_PATH,
+						objectName: 'New Object',
+						collectType: COLLECT_TYPE.T_PATH,
 						targetFolder: '',
 						objectTemplate: '',
 						createNotes: true,
@@ -104,9 +104,8 @@ export class ValidationSettingTab extends PluginSettingTab {
 		// ── Header (fold toggle lives here)
 		const titleRow = templateDiv.createDiv({ cls: 'template-title-row' });
 
-		const templateName = this.getFolderName(template.targetFolder);
 		const titleElement = titleRow.createEl('div', {
-			text: templateName || `Object ${index + 1}`,
+			text: template.objectName || `Object ${index + 1}`,
 			cls: 'template-title'
 		});
 
@@ -138,10 +137,10 @@ export class ValidationSettingTab extends PluginSettingTab {
 			.setName('Object Name')
 			.setDesc('The name of your object')
 			.addText(text => {
-				text.setValue(template.object_name)
+				text.setValue(template.objectName)
 					.setPlaceholder('My Object Name')
 					.onChange(async (value) => {
-						this.plugin.settings.templates[index].object_name = value;
+						this.plugin.settings.templates[index].objectName = value;
 						await this.plugin.saveSettings();
 						titleElement.textContent = value;
 					});
@@ -154,17 +153,17 @@ export class ValidationSettingTab extends PluginSettingTab {
 			dropdown  
 				.addOption(COLLECT_TYPE[COLLECT_TYPE.T_PATH], 'Path Selector')
 				.addOption(COLLECT_TYPE[COLLECT_TYPE.T_REGEX], 'Regex Selector')  
-				.setValue(COLLECT_TYPE[template.collect_type])  
+				.setValue(COLLECT_TYPE[template.collectType])  
 				.onChange(async (value) => {  
-					this.plugin.settings.templates[index].collect_type = COLLECT_TYPE[value as keyof typeof COLLECT_TYPE];  
+					this.plugin.settings.templates[index].collectType = COLLECT_TYPE[value as keyof typeof COLLECT_TYPE];  
 					await this.plugin.saveSettings();  
 					this.display();
 				})  
 			);
 		
-		if (template.collect_type == COLLECT_TYPE.T_PATH){
+		if (template.collectType == COLLECT_TYPE.T_PATH){
 			this.targetFolderSetting(bodyDiv,template,index);
-		} else if (template.collect_type == COLLECT_TYPE.T_REGEX) {
+		} else if (template.collectType == COLLECT_TYPE.T_REGEX) {
 			this.regexSetting(bodyDiv,template,index);
 		}
 		
@@ -225,12 +224,6 @@ export class ValidationSettingTab extends PluginSettingTab {
 					.setButtonText('Test Regex')
 					.setTooltip('Test regex filter against vault folders')
 					.onClick(() => {
-						// Clear previous results or show new ones
-						if (resultsDiv.getText()) {
-							resultsDiv.setText('');
-							return;
-						}
-						
 						const regexValue = this.plugin.settings.templates[index].targetFolder;
 						
 						if (!regexValue) {
@@ -240,9 +233,10 @@ export class ValidationSettingTab extends PluginSettingTab {
 						
 						try {
 							const regex = new RegExp(regexValue);
-							const allFolders = this.plugin.app.vault.getAllLoadedFiles()
-								.filter(file => file instanceof TFolder)
+							const allFolders = this.plugin.app.vault.getAllFolders()
 								.map(folder => folder.path);
+
+							//const filteredFolders = allFolders.filter(folder => filteredFolders.)
 							
 							const matchingFolders = allFolders.filter(path => regex.test(path));
 							
@@ -279,11 +273,5 @@ export class ValidationSettingTab extends PluginSettingTab {
 						await this.plugin.saveSettings();
 					});
 			});
-	}
-
-	private getFolderName(path: string): string {
-		if (!path) return '';
-		const parts = path.split('/');
-		return parts[parts.length - 1];
 	}
 }

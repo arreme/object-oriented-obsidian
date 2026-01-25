@@ -1,5 +1,6 @@
-import { App, Notice, SuggestModal, Modal, Setting } from 'obsidian';
-import { TemplateConfig } from '../Settings/config_data';
+import { App, Notice, SuggestModal, Modal, Setting, TFolder } from 'obsidian';
+import { TemplateConfig, COLLECT_TYPE } from '../Settings/config_data';
+import { FolderSuggest } from 'src_ts/Settings/abstract_suggester';
 
 export class CreateObjectHandler {
 	app: App;
@@ -23,34 +24,64 @@ export class CreateObjectHandler {
 	}
 
 	async createObjectFromTemplate(template: TemplateConfig) {
-		const { vault, workspace } = this.app;
 
-		// Use the template content directly
 		const templateContent = template.objectTemplate;
 		if (!templateContent || !templateContent.trim()) {
-			new Notice(`Template content is empty for: ${this.getFolderName(template.targetFolder)}`);
+			new Notice(`Template content is empty for: ${template.objectName}`);
 			return;
 		}
 
-		// Validate target folder
 		if (!template.targetFolder) {
 			new Notice(`Target folder not set for template`);
 			return;
 		}
 
+
+		// If collect_type is T_REGEX, show folder selection modal
+		if (template.collectType === COLLECT_TYPE.T_REGEX) {
+			this.regexCreate(template);
+		} else {
+			this.openSuggestName(template.targetFolder, templateContent);
+		}
+	}
+
+	private regexCreate(template: TemplateConfig) {
+		try {
+			const regex = new RegExp(template.targetFolder);
+			const allFolders = this.app.vault.getAllLoadedFiles()
+				.filter(file => file instanceof TFolder)
+				.map(folder => folder.path);
+			
+			const matchingFolders = allFolders.filter(path => regex.test(path));
+			
+			if (matchingFolders.length === 0) {
+				new Notice('No folders match the regex filter');
+				return;
+			}
+
+			// Show folder selection modal
+			new FolderSelectionModal(this.app, matchingFolders, async (path: string) => {
+				await this.openSuggestName(path, template.objectTemplate);
+			}).open();
+		} catch (error) {
+			new Notice(`Invalid regex: ${(error as Error).message}`);
+		}
+	}
+
+	private async openSuggestName(targetFolderPath: string, templateContent: string) {
 		// Prompt for note title
 		const title = await this.promptForTitle();
 		if (!title) return;
 
 		// Create the file in the target folder
-		const filePath = `${template.targetFolder}/${title}.md`;
+		const filePath = `${targetFolderPath}/${title}.md`;
 		
 		try {
-			const file = await vault.create(filePath, templateContent);
+			const file = await this.app.vault.create(filePath, templateContent);
 			new Notice(`Created: ${title}`);
 
 			// Open the file
-			const leaf = workspace.getLeaf(false);
+			const leaf = this.app.workspace.getLeaf(false);
 			await leaf.openFile(file);
 		} catch (error) {
 			new Notice(`Error creating file: ${(error as Error).message}`);
@@ -65,8 +96,42 @@ export class CreateObjectHandler {
 			modal.open();
 		});
 	}
+}
 
-	private getFolderName(path: string): string {
+class FolderSelectionModal extends SuggestModal<string> {
+	folders: string[];
+	onChoose: (folder: string) => void;
+
+
+	constructor(app: App, folders: string[], onChoose: (template: string) => void) {
+        super(app);
+        this.folders = folders;
+        this.onChoose = onChoose;
+    }
+
+	getSuggestions(query: string): string[] {
+		const lowerQuery = query.toLowerCase();
+		return this.folders.filter(folder => {
+			const folderName = this.getFolderName(folder);
+			return folderName.toLowerCase().includes(lowerQuery) || 
+				   folder.toLowerCase().includes(lowerQuery);
+		});
+	}
+
+	renderSuggestion(folder: string, el: HTMLElement) {
+		const folderName = this.getFolderName(folder);
+		el.createEl("div", { text: folderName });
+		// Optionally show full path as subtitle
+		if (folder !== folderName) {
+			el.createEl("small", { text: folder, cls: "suggestion-note" });
+		}
+	}
+
+	onChooseSuggestion(template: string, evt: MouseEvent | KeyboardEvent) {
+        this.onChoose(template);
+    }
+
+	getFolderName(path: string): string {
 		if (!path) return '';
 		const parts = path.split('/');
 		return parts[parts.length - 1];
@@ -86,24 +151,18 @@ class TemplateSuggestModal extends SuggestModal<TemplateConfig> {
     getSuggestions(query: string): TemplateConfig[] {
         const lowerQuery = query.toLowerCase();
         return this.templates.filter(template => {
-            const folderName = this.getFolderName(template.targetFolder);
+            const folderName = template.objectName;
             return folderName.toLowerCase().includes(lowerQuery);
         });
     }
 
     renderSuggestion(template: TemplateConfig, el: HTMLElement) {
-        const folderName = this.getFolderName(template.targetFolder);
+        const folderName = template.objectName;
         el.createEl("div", { text: folderName });
     }
 
     onChooseSuggestion(template: TemplateConfig, evt: MouseEvent | KeyboardEvent) {
         this.onChoose(template);
-    }
-
-    getFolderName(path: string): string {
-        if (!path) return '';
-        const parts = path.split('/');
-        return parts[parts.length - 1];
     }
 }
 
