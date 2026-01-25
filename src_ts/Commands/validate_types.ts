@@ -14,7 +14,7 @@ export class ValidateTypes {
 
         for (const template of settings.templates) {
             if (!template.objectTemplate || !template.targetFolder) {
-                console.warn(`Skipping incomplete template: ${this.getFolderName(template.targetFolder)}`);
+                console.warn(`Skipping incomplete template: ${template.objectName}`);
                 continue;
             }
 
@@ -27,7 +27,7 @@ export class ValidateTypes {
                 );
                 totalCount += count;
             } catch (error) {
-                console.error(`Error validating template ${this.getFolderName(template.targetFolder)}:`, error);
+                console.error(`Error validating template ${template.objectName}:`, error);
             }
         }
 
