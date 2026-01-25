@@ -1,7 +1,7 @@
-import { App, PluginSettingTab, Setting, normalizePath } from 'obsidian';
+import { App, PluginSettingTab, Setting, TFolder, normalizePath } from 'obsidian';
 import ValidationPlugin from '../main';
 import { FileSuggest, FolderSuggest } from './abstract_suggester';
-import { TemplateConfig } from './config_data';
+import { COLLECT_TYPE, TemplateConfig } from './config_data';
 
 export class ValidationSettingTab extends PluginSettingTab {
 	plugin: ValidationPlugin;
@@ -28,6 +28,8 @@ export class ValidationSettingTab extends PluginSettingTab {
 				.onClick(async () => {
 					this.plugin.settings.templates.push({
 						folded: false,
+						object_name: '',
+						collect_type: COLLECT_TYPE.T_PATH,
 						targetFolder: '',
 						objectTemplate: '',
 						createNotes: true,
@@ -133,19 +135,39 @@ export class ValidationSettingTab extends PluginSettingTab {
 		bodyDiv.toggleClass('is-collapsed', this.plugin.settings.templates[index].folded);
 
 		new Setting(bodyDiv)
-			.setName('Target Folder')
-			.setDesc('Folder to check object validity')
-			.addSearch(search => {
-				new FolderSuggest(this.plugin.app, search.inputEl);
-
-				search.setValue(template.targetFolder)
-					.setPlaceholder('path/to/target/folder')
+			.setName('Object Name')
+			.setDesc('The name of your object')
+			.addText(text => {
+				text.setValue(template.object_name)
+					.setPlaceholder('My Object Name')
 					.onChange(async (value) => {
-						this.plugin.settings.templates[index].targetFolder = normalizePath(value.trim());
+						this.plugin.settings.templates[index].object_name = value;
 						await this.plugin.saveSettings();
-						titleElement.textContent = this.getFolderName(value) || `Object ${index + 1}`;
+						titleElement.textContent = value;
 					});
 			});
+
+		new Setting(bodyDiv)  
+			.setName('Select Folder Type')
+			.setDesc('How to select the target folder')
+			.addDropdown((dropdown) =>  
+			dropdown  
+				.addOption(COLLECT_TYPE[COLLECT_TYPE.T_PATH], 'Path Selector')
+				.addOption(COLLECT_TYPE[COLLECT_TYPE.T_REGEX], 'Regex Selector')  
+				.setValue(COLLECT_TYPE[template.collect_type])  
+				.onChange(async (value) => {  
+					this.plugin.settings.templates[index].collect_type = COLLECT_TYPE[value as keyof typeof COLLECT_TYPE];  
+					await this.plugin.saveSettings();  
+					this.display();
+				})  
+			);
+		
+		if (template.collect_type == COLLECT_TYPE.T_PATH){
+			this.targetFolderSetting(bodyDiv,template,index);
+		} else if (template.collect_type == COLLECT_TYPE.T_REGEX) {
+			this.regexSetting(bodyDiv,template,index);
+		}
+		
 
 		new Setting(bodyDiv)
 			.setName('Object Template')
@@ -175,6 +197,88 @@ export class ValidationSettingTab extends PluginSettingTab {
 		if (index < this.plugin.settings.templates.length - 1) {
 			templateDiv.createEl('hr');
 		}
+	}
+
+	private regexSetting(bodyDiv: HTMLDivElement, template: TemplateConfig, index: number) {
+		// Create a container to hold both the setting and results
+		const container = bodyDiv.createDiv();
+		
+		let resultsDiv: HTMLDivElement;
+		
+		new Setting(container)
+			.setName('Regex Filter')
+			.setDesc('Regex filter to apply folders')
+			.addText(text => {
+				text.setValue(template.targetFolder)
+					.setPlaceholder('Your regex filter')
+					.onChange(async (value) => {
+						this.plugin.settings.templates[index].targetFolder = value;
+						await this.plugin.saveSettings();
+						// Clear results when regex changes
+						if (resultsDiv) {
+							resultsDiv.setText('');
+						}
+					});
+			})
+			.addButton(button => {
+				button
+					.setButtonText('Test Regex')
+					.setTooltip('Test regex filter against vault folders')
+					.onClick(() => {
+						// Clear previous results or show new ones
+						if (resultsDiv.getText()) {
+							resultsDiv.setText('');
+							return;
+						}
+						
+						const regexValue = this.plugin.settings.templates[index].targetFolder;
+						
+						if (!regexValue) {
+							resultsDiv.setText('No regex filter defined');
+							return;
+						}
+						
+						try {
+							const regex = new RegExp(regexValue);
+							const allFolders = this.plugin.app.vault.getAllLoadedFiles()
+								.filter(file => file instanceof TFolder)
+								.map(folder => folder.path);
+							
+							const matchingFolders = allFolders.filter(path => regex.test(path));
+							
+							if (matchingFolders.length === 0) {
+								resultsDiv.setText('No folders match this regex');
+							} else {
+								resultsDiv.setText('-> '+matchingFolders.join('\n-> '));
+							}
+						} catch (error) {
+							resultsDiv.setText(`Invalid regex: ${error.message}`);
+						}
+					});
+			});
+		
+		// Create results div below the setting
+		resultsDiv = container.createDiv({
+			cls: 'regex-test-results',
+			attr: {
+				style: 'margin: 8px; padding: 8px; round-borders: 10px; font-family: monospace; font-size: 0.9em; white-space: pre-wrap; overflow-y: auto; background-color: var(--background-secondary);'
+			}
+		});
+	}
+
+	private targetFolderSetting(bodyDiv: HTMLDivElement, template: TemplateConfig, index: number) {
+		new Setting(bodyDiv)
+			.setName('Target Folder')
+			.setDesc('Folder to check object validity')
+			.addSearch(search => {
+				new FolderSuggest(this.plugin.app, search.inputEl);
+				search.setValue(template.targetFolder)
+					.setPlaceholder('path/to/target/folder')
+					.onChange(async (value) => {
+						this.plugin.settings.templates[index].targetFolder = normalizePath(value.trim());
+						await this.plugin.saveSettings();
+					});
+			});
 	}
 
 	private getFolderName(path: string): string {
