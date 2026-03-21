@@ -9,11 +9,12 @@ export class CreateObjectHandler {
 	}
 
 	async execute(templates: TemplateConfig[]) {
-		// Filter out templates without targetFolder
-		const validTemplates = templates.filter(t => t.createNotes && t.targetFolder && t.targetFolder.trim());
+        const validTemplates = templates.filter(
+            t => t.createNotes && t.propertyTypeValue && t.propertyTypeValue.trim() && t.objectTemplate && t.objectTemplate.trim()
+        );
 		
 		if (validTemplates.length === 0) {
-			new Notice('No valid templates configured. Please set target folders in settings.');
+            new Notice('No valid templates configured. Set Property type value and Object Template in settings.');
 			return;
 		}
 		
@@ -28,13 +29,7 @@ export class CreateObjectHandler {
 		// Use the template content directly
 		const templateContent = template.objectTemplate;
 		if (!templateContent || !templateContent.trim()) {
-			new Notice(`Template content is empty for: ${this.getFolderName(template.targetFolder)}`);
-			return;
-		}
-
-		// Validate target folder
-		if (!template.targetFolder) {
-			new Notice(`Target folder not set for template`);
+            new Notice(`Template content is empty for: ${template.propertyTypeValue || 'unnamed object'}`);
 			return;
 		}
 
@@ -42,12 +37,12 @@ export class CreateObjectHandler {
 		const title = await this.promptForTitle();
 		if (!title) return;
 
-		// Create the file in the target folder
-		const filePath = `${template.targetFolder}/${title}.md`;
+        const creationFolder = this.getCreationFolderPath();
+        const filePath = creationFolder ? `${creationFolder}/${title}.md` : `${title}.md`;
 		
 		try {
 			const file = await vault.create(filePath, templateContent);
-			new Notice(`Created: ${title}`);
+            new Notice(`Created: ${file.path}`);
 
 			// Open the file
 			const leaf = workspace.getLeaf(false);
@@ -56,6 +51,16 @@ export class CreateObjectHandler {
 			new Notice(`Error creating file: ${(error as Error).message}`);
 		}
 	}
+
+    private getCreationFolderPath(): string {
+        const activeFile = this.app.workspace.getActiveFile();
+        if (!activeFile) return '';
+
+        const parent = activeFile.parent;
+        if (!parent) return '';
+
+        return parent.path;
+    }
 
 	async promptForTitle(): Promise<string | null> {
 		return new Promise((resolve) => {
@@ -66,11 +71,6 @@ export class CreateObjectHandler {
 		});
 	}
 
-	private getFolderName(path: string): string {
-		if (!path) return '';
-		const parts = path.split('/');
-		return parts[parts.length - 1];
-	}
 }
 
 class TemplateSuggestModal extends SuggestModal<TemplateConfig> {
@@ -86,24 +86,18 @@ class TemplateSuggestModal extends SuggestModal<TemplateConfig> {
     getSuggestions(query: string): TemplateConfig[] {
         const lowerQuery = query.toLowerCase();
         return this.templates.filter(template => {
-            const folderName = this.getFolderName(template.targetFolder);
-            return folderName.toLowerCase().includes(lowerQuery);
+            const typeValue = template.propertyTypeValue || '';
+            return typeValue.toLowerCase().includes(lowerQuery);
         });
     }
 
     renderSuggestion(template: TemplateConfig, el: HTMLElement) {
-        const folderName = this.getFolderName(template.targetFolder);
-        el.createEl("div", { text: folderName });
+        const typeValue = template.propertyTypeValue || 'Unnamed object';
+        el.createEl("div", { text: typeValue });
     }
 
     onChooseSuggestion(template: TemplateConfig, evt: MouseEvent | KeyboardEvent) {
         this.onChoose(template);
-    }
-
-    getFolderName(path: string): string {
-        if (!path) return '';
-        const parts = path.split('/');
-        return parts[parts.length - 1];
     }
 }
 

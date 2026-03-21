@@ -21,6 +21,18 @@ export class ValidationSettingTab extends PluginSettingTab {
 		const tittleContainer = containerEl.createDiv({ cls: 'add-object-container' });
 		tittleContainer.createEl('h3', { text: 'Object Definitions' });
 
+		new Setting(containerEl)
+			.setName('Target property')
+			.setDesc('Frontmatter property used to identify object type (example: obj-type)')
+			.addText(text => {
+				text.setValue(this.plugin.settings.targetProperty)
+					.setPlaceholder('obj-type')
+					.onChange(async (value) => {
+						this.plugin.settings.targetProperty = value.trim();
+						await this.plugin.saveSettings();
+					});
+			});
+
 		new Setting(tittleContainer)
 			.addButton(button => button
 				.setButtonText('Add Object')
@@ -28,7 +40,7 @@ export class ValidationSettingTab extends PluginSettingTab {
 				.onClick(async () => {
 					this.plugin.settings.templates.push({
 						folded: false,
-						targetFolder: '',
+						propertyTypeValue: '',
 						objectTemplate: '',
 						createNotes: true,
 					});
@@ -102,7 +114,7 @@ export class ValidationSettingTab extends PluginSettingTab {
 		// ── Header (fold toggle lives here)
 		const titleRow = templateDiv.createDiv({ cls: 'template-title-row' });
 
-		const templateName = this.getFolderName(template.targetFolder);
+		const templateName = template.propertyTypeValue?.trim();
 		const titleElement = titleRow.createEl('div', {
 			text: templateName || `Object ${index + 1}`,
 			cls: 'template-title'
@@ -133,17 +145,16 @@ export class ValidationSettingTab extends PluginSettingTab {
 		bodyDiv.toggleClass('is-collapsed', this.plugin.settings.templates[index].folded);
 
 		new Setting(bodyDiv)
-			.setName('Target Folder')
-			.setDesc('Folder to check object validity')
-			.addSearch(search => {
-				new FolderSuggest(this.plugin.app, search.inputEl);
-
-				search.setValue(template.targetFolder)
-					.setPlaceholder('path/to/target/folder')
+			.setName('Property type value')
+			.setDesc('Template applies when target property equals this value (example: task)')
+			.addText(text => {
+				text.setValue(template.propertyTypeValue || '')
+					.setPlaceholder('task')
 					.onChange(async (value) => {
-						this.plugin.settings.templates[index].targetFolder = normalizePath(value.trim());
+						const trimmed = value.trim();
+						this.plugin.settings.templates[index].propertyTypeValue = trimmed;
 						await this.plugin.saveSettings();
-						titleElement.textContent = this.getFolderName(value) || `Object ${index + 1}`;
+						titleElement.textContent = trimmed || `Object ${index + 1}`;
 					});
 			});
 
@@ -177,9 +188,4 @@ export class ValidationSettingTab extends PluginSettingTab {
 		}
 	}
 
-	private getFolderName(path: string): string {
-		if (!path) return '';
-		const parts = path.split('/');
-		return parts[parts.length - 1];
-	}
 }

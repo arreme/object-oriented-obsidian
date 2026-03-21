@@ -1,13 +1,14 @@
 export interface TemplateConfig {
 	folded: boolean;
 	createNotes: boolean;
-	targetFolder: string;
+	propertyTypeValue: string;
 	objectTemplate: string;
 	
 }
 
 export interface ValidationPluginSettings {
 	templates: TemplateConfig[];
+	targetProperty: string;
 	pdfSourceFolder: string;
 	pdfDestFolder: string;
 	pdfTemplate: string;
@@ -15,6 +16,7 @@ export interface ValidationPluginSettings {
 
 export const DEFAULT_SETTINGS: ValidationPluginSettings = {
 	templates: [],
+	targetProperty: '',
 	pdfSourceFolder: '',
 	pdfDestFolder: '',
 	pdfTemplate: ''

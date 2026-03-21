@@ -11,10 +11,16 @@ export class ValidateTypes {
     async validateTypesAsync(settings: ValidationPluginSettings) {
         const { vault, fileManager } = this.app;
         let totalCount = 0;
+        const targetProperty = settings.targetProperty?.trim();
+
+        if (!targetProperty) {
+            new Notice('Target property is not configured. Set it in plugin settings.');
+            return;
+        }
 
         for (const template of settings.templates) {
-            if (!template.objectTemplate || !template.targetFolder) {
-                console.warn(`Skipping incomplete template: ${this.getFolderName(template.targetFolder)}`);
+            if (!template.objectTemplate || !template.propertyTypeValue?.trim()) {
+                console.warn('Skipping incomplete template: missing object template or property type value.');
                 continue;
             }
 
@@ -23,41 +29,51 @@ export class ValidateTypes {
                     vault,
                     fileManager,
                     template.objectTemplate,
-                    template.targetFolder
+                    targetProperty,
+                    template.propertyTypeValue.trim()
                 );
                 totalCount += count;
             } catch (error) {
-                console.error(`Error validating template ${this.getFolderName(template.targetFolder)}:`, error);
+                console.error(`Error validating template for value ${template.propertyTypeValue}:`, error);
             }
         }
 
         new Notice(`Validation complete. Reviewed ${totalCount} files.`);
     }
 
-    private async validateTemplate(vault: any, fileManager: any, templateContent: string, targetFolder: string): Promise<number> {
+    private async validateTemplate(
+        vault: any,
+        fileManager: any,
+        templateContent: string,
+        targetProperty: string,
+        propertyTypeValue: string
+    ): Promise<number> {
         // Parse template frontmatter using Obsidian's built-in parser
         const templateFM = this.parseFrontmatterWithObsidian(templateContent);
         if (!templateFM) {
-            throw new Error(`Template has no valid YAML frontmatter for folder: ${this.getFolderName(targetFolder)}`);
+            throw new Error(`Template has no valid YAML frontmatter for property type: ${propertyTypeValue}`);
         }
 
         // Extract ordered keys from template content
         const orderedKeys = this.extractOrderedKeysFromFrontmatter(templateContent);
 
         if (orderedKeys.length === 0) {
-            console.warn(`No keys found in template for folder: ${this.getFolderName(targetFolder)}`);
+            console.warn(`No keys found in template for property type: ${propertyTypeValue}`);
             return 0;
         }
 
-        // Get all markdown files in target folder
-        const files = vault.getFiles().filter(
-            (f: any) => f.path.startsWith(targetFolder) && f.extension === "md"
-        );
+        // Get all markdown files in vault and validate only those matching targetProperty/propertyTypeValue
+        const files = vault.getFiles().filter((f: any) => f.extension === "md");
 
         let fileCount = 0;
 
         for (const file of files) {
             await fileManager.processFrontMatter(file, (fm: any) => {
+                if (!fm || !(targetProperty in fm)) return;
+
+                const typeValue = String(fm[targetProperty] ?? '').trim();
+                if (typeValue !== propertyTypeValue) return;
+
                 const newFm = { ...fm };
                 let modified = false;
                 let i = 0;
@@ -85,7 +101,7 @@ export class ValidateTypes {
             });
         }
         
-        new Notice(`Validated ${fileCount} files for template: ${this.getFolderName(targetFolder)}`);
+        new Notice(`Validated ${fileCount} files for ${targetProperty}: ${propertyTypeValue}`);
         return fileCount;
     }
 
@@ -131,11 +147,5 @@ export class ValidateTypes {
         }
 
         return keys;
-    }
-
-    private getFolderName(path: string): string {
-        if (!path) return '';
-        const parts = path.split('/');
-        return parts[parts.length - 1];
     }
 }
