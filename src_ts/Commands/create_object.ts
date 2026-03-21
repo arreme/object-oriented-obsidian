@@ -8,7 +8,7 @@ export class CreateObjectHandler {
 		this.app = app;
 	}
 
-	async execute(templates: TemplateConfig[]) {
+    async execute(templates: TemplateConfig[], destinationFolderPath?: string) {
         const validTemplates = templates.filter(
             t => t.createNotes && t.propertyTypeValue && t.propertyTypeValue.trim() && t.objectTemplate && t.objectTemplate.trim()
         );
@@ -19,11 +19,11 @@ export class CreateObjectHandler {
 		}
 		
 		new TemplateSuggestModal(this.app, validTemplates, async (template: TemplateConfig) => {
-			await this.createObjectFromTemplate(template);
+            await this.createObjectFromTemplate(template, destinationFolderPath);
 		}).open();
 	}
 
-	async createObjectFromTemplate(template: TemplateConfig) {
+    async createObjectFromTemplate(template: TemplateConfig, destinationFolderPath?: string) {
 		const { vault, workspace } = this.app;
 
 		// Use the template content directly
@@ -37,7 +37,7 @@ export class CreateObjectHandler {
 		const title = await this.promptForTitle();
 		if (!title) return;
 
-        const creationFolder = this.getCreationFolderPath();
+        const creationFolder = destinationFolderPath ?? this.getCreationFolderPath();
         const filePath = creationFolder ? `${creationFolder}/${title}.md` : `${title}.md`;
 		
 		try {

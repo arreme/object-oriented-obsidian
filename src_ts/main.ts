@@ -1,4 +1,4 @@
-import { Plugin } from 'obsidian';
+import { Plugin, TFolder } from 'obsidian';
 import { ValidationSettingTab } from './Settings/settings';
 import { ValidationPluginSettings, DEFAULT_SETTINGS } from './Settings/config_data';
 import { CreateObjectHandler } from './Commands/create_object';
@@ -40,6 +40,22 @@ export default class ValidationPlugin extends Plugin {
 
 		// Add settings tab
 		this.addSettingTab(new ValidationSettingTab(this.app, this));
+
+		this.registerEvent(this.app.workspace.on('file-menu', (menu, file) => {
+			if (!(file instanceof TFolder)) {
+				return;
+			}
+
+			menu.addItem((item) => {
+				item
+					.setTitle('Create Object Here')
+					.setIcon('plus-square')
+					.onClick(() => {
+						const handler = new CreateObjectHandler(this.app);
+						handler.execute(this.settings.templates, file.path);
+					});
+			});
+		}));
 	}
 
 	onunload() {
