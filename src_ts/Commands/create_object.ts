@@ -8,7 +8,7 @@ export class CreateObjectHandler {
 		this.app = app;
 	}
 
-    async execute(templates: TemplateConfig[], destinationFolderPath?: string) {
+    async execute(templates: TemplateConfig[], destinationFolderPath?: string, targetProperty?: string) {
         const validTemplates = templates.filter(
             t => t.createNotes && t.propertyTypeValue && t.propertyTypeValue.trim() && t.objectTemplate && t.objectTemplate.trim()
         );
@@ -19,15 +19,18 @@ export class CreateObjectHandler {
 		}
 		
 		new TemplateSuggestModal(this.app, validTemplates, async (template: TemplateConfig) => {
-            await this.createObjectFromTemplate(template, destinationFolderPath);
+            await this.createObjectFromTemplate(template, destinationFolderPath, targetProperty);
 		}).open();
 	}
 
-    async createObjectFromTemplate(template: TemplateConfig, destinationFolderPath?: string) {
+    async createObjectFromTemplate(template: TemplateConfig, destinationFolderPath?: string, targetProperty?: string) {
 		const { vault, workspace } = this.app;
 
-		// Use the template content directly
-		const templateContent = template.objectTemplate;
+		const templateContent = this.withTypeFrontmatter(
+            template.objectTemplate,
+            targetProperty,
+            template.propertyTypeValue.trim()
+        );
 		if (!templateContent || !templateContent.trim()) {
             new Notice(`Template content is empty for: ${template.propertyTypeValue || 'unnamed object'}`);
 			return;
@@ -52,6 +55,29 @@ export class CreateObjectHandler {
 			new Notice(`Error creating file: ${(error as Error).message}`);
 		}
 	}
+
+    private withTypeFrontmatter(content: string, targetProperty?: string, propertyTypeValue?: string): string {
+        if (!targetProperty || !propertyTypeValue) {
+            return content;
+        }
+
+        if (!content.startsWith('---')) {
+            return `---\n${targetProperty}: ${propertyTypeValue}\n---\n${content}`;
+        }
+
+        const end = content.indexOf('\n---', 3);
+        if (end === -1) {
+            return `---\n${targetProperty}: ${propertyTypeValue}\n---\n${content}`;
+        }
+
+        const yamlBlock = content.slice(3, end).trim();
+        const body = content.slice(end + 4);
+        const lines = yamlBlock ? yamlBlock.split('\n') : [];
+        const filtered = lines.filter((line) => !line.startsWith(`${targetProperty}:`));
+        const nextYaml = [`${targetProperty}: ${propertyTypeValue}`, ...filtered].join('\n');
+
+        return `---\n${nextYaml}\n---${body}`;
+    }
 
     private buildFileName(title: string, nameSuffix: string): string {
         const trimmedSuffix = nameSuffix.trim();

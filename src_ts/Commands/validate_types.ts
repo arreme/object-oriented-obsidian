@@ -56,13 +56,15 @@ export class ValidateTypes {
             throw new Error(`Template has no valid YAML frontmatter for property type: ${propertyTypeValue}`);
         }
 
-        // Extract ordered keys from template content
-        const orderedKeys = this.extractOrderedKeysFromFrontmatter(templateContent);
+        // Build expected key order with targetProperty always first.
+        const templateOrderedKeys = this.extractOrderedKeysFromFrontmatter(templateContent)
+            .filter((key) => key !== targetProperty);
+        const orderedKeys = [targetProperty, ...templateOrderedKeys];
 
-        if (orderedKeys.length === 0) {
-            console.warn(`No keys found in template for property type: ${propertyTypeValue}`);
-            return 0;
-        }
+        const templateValues: Record<string, unknown> = {
+            ...templateFM,
+            [targetProperty]: propertyTypeValue,
+        };
 
         // Get all markdown files in vault and validate only those matching targetProperty/propertyTypeValue
         const files = vault.getFiles().filter((f: any) => f.extension === "md");
@@ -81,27 +83,47 @@ export class ValidateTypes {
 
                 matchesTemplate = true;
 
-                const newFm = { ...fm };
-                let modified = false;
-                let i = 0;
+                const currentFm = { ...fm };
+                const currentKeys = Object.keys(currentFm);
+                let modified = currentKeys.length !== orderedKeys.length;
 
-                // Check if keys match and are in order
-                modified = Object.keys(fm).length !== orderedKeys.length;
-
-                for (const key of Object.keys(fm)) {
-                    if (key !== orderedKeys[i]) {
-                        delete fm[key];
-                        modified = true;
-                        continue;
+                if (!modified) {
+                    for (let i = 0; i < currentKeys.length; i++) {
+                        if (currentKeys[i] !== orderedKeys[i]) {
+                            modified = true;
+                            break;
+                        }
                     }
-                    i++;
+                }
+
+                if (!modified) {
+                    for (const key of orderedKeys) {
+                        if (key === targetProperty) {
+                            if (String(currentFm[key] ?? '').trim() !== propertyTypeValue) {
+                                modified = true;
+                            }
+                            continue;
+                        }
+
+                        if (!(key in currentFm)) {
+                            modified = true;
+                            break;
+                        }
+                    }
                 }
 
                 if (!modified) return;
 
-                // Rebuild frontmatter in correct order
+                for (const key of Object.keys(fm)) {
+                    delete fm[key];
+                }
+
                 for (const key of orderedKeys) {
-                    fm[key] = key in newFm ? newFm[key] : templateFM[key];
+                    if (key === targetProperty) {
+                        fm[key] = propertyTypeValue;
+                    } else {
+                        fm[key] = key in currentFm ? currentFm[key] : templateValues[key];
+                    }
                 }
 
                 frontmatterModified = true;

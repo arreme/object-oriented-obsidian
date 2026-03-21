@@ -20,17 +20,25 @@ export class ValidationSettingTab extends PluginSettingTab {
 		const tittleContainer = containerEl.createDiv({ cls: 'add-object-container' });
 		tittleContainer.createEl('h3', { text: 'Object Definitions' });
 
+		let targetPropertyDraft = this.plugin.settings.targetProperty;
+
 		new Setting(containerEl)
 			.setName('Target property')
-			.setDesc('Frontmatter property used to identify object type (example: obj-type)')
+			.setDesc('Frontmatter property used to identify object type (example: obj-type). Changes are applied only when you press Apply.')
 			.addText(text => {
 				text.setValue(this.plugin.settings.targetProperty)
 					.setPlaceholder('obj-type')
-					.onChange(async (value) => {
-						this.plugin.settings.targetProperty = value.trim();
-						await this.plugin.saveSettings();
+					.onChange((value) => {
+						targetPropertyDraft = value.trim();
 					});
-			});
+			})
+			.addButton(button => button
+				.setButtonText('Apply')
+				.setCta()
+				.onClick(async () => {
+					await this.plugin.applyTargetProperty(targetPropertyDraft);
+					this.display();
+				}));
 
 		new Setting(tittleContainer)
 			.addButton(button => button

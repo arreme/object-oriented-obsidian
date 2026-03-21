@@ -1,4 +1,4 @@
-import { Plugin, TFolder } from 'obsidian';
+import { Notice, Plugin, TFolder } from 'obsidian';
 import { ValidationSettingTab } from './Settings/settings';
 import { ValidationPluginSettings, DEFAULT_SETTINGS } from './Settings/config_data';
 import { CreateObjectHandler } from './Commands/create_object';
@@ -52,7 +52,7 @@ export default class ValidationPlugin extends Plugin {
 					.setIcon('plus-square')
 					.onClick(() => {
 						const handler = new CreateObjectHandler(this.app);
-						handler.execute(this.settings.templates, file.path);
+						handler.execute(this.settings.templates, file.path, this.settings.targetProperty);
 					});
 			});
 		}));
@@ -70,6 +70,53 @@ export default class ValidationPlugin extends Plugin {
 		await this.saveData(this.settings);
 	}
 
+	async applyTargetProperty(newTargetProperty: string) {
+		const trimmedNewProperty = newTargetProperty.trim();
+		if (!trimmedNewProperty) {
+			new Notice('Target property cannot be empty.');
+			return;
+		}
+
+		const oldTargetProperty = this.settings.targetProperty?.trim();
+		if (oldTargetProperty === trimmedNewProperty) {
+			new Notice('Target property unchanged.');
+			return;
+		}
+
+		let renamedFilesCount = 0;
+		if (oldTargetProperty) {
+			const { vault, fileManager } = this.app;
+			const markdownFiles = vault.getMarkdownFiles();
+
+			for (const file of markdownFiles) {
+				let fileChanged = false;
+				await fileManager.processFrontMatter(file, (fm: Record<string, unknown>) => {
+					if (!fm || !(oldTargetProperty in fm)) {
+						return;
+					}
+
+					if (trimmedNewProperty in fm) {
+						delete fm[oldTargetProperty];
+						fileChanged = true;
+						return;
+					}
+
+					const oldValue = fm[oldTargetProperty];
+					delete fm[oldTargetProperty];
+					fm[trimmedNewProperty] = oldValue;
+					fileChanged = true;
+				});
+
+				if (fileChanged) {
+					renamedFilesCount++;
+				}
+			}
+		}
+
+		this.settings.targetProperty = trimmedNewProperty;
+		await this.saveSettings();
+		new Notice(`Applied target property. Updated ${renamedFilesCount} file(s).`);
+	}
 
 	validateEverything() {
 		const handler = new ValidateTypes(this.app);
@@ -83,6 +130,6 @@ export default class ValidationPlugin extends Plugin {
 
 	createObject() {
 		const handler = new CreateObjectHandler(this.app);
-		handler.execute(this.settings.templates);
+		handler.execute(this.settings.templates, undefined, this.settings.targetProperty);
 	}
 }
