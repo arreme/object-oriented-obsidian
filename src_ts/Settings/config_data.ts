@@ -9,15 +9,9 @@ export interface TemplateConfig {
 export interface ValidationPluginSettings {
 	templates: TemplateConfig[];
 	targetProperty: string;
-	pdfSourceFolder: string;
-	pdfDestFolder: string;
-	pdfTemplate: string;
 }
 
 export const DEFAULT_SETTINGS: ValidationPluginSettings = {
 	templates: [],
-	targetProperty: '',
-	pdfSourceFolder: '',
-	pdfDestFolder: '',
-	pdfTemplate: ''
+	targetProperty: ''
 };

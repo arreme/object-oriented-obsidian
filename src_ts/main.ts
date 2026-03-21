@@ -2,7 +2,6 @@ import { Plugin } from 'obsidian';
 import { ValidationSettingTab } from './Settings/settings';
 import { ValidationPluginSettings, DEFAULT_SETTINGS } from './Settings/config_data';
 import { CreateObjectHandler } from './Commands/create_object';
-import { ValidatePDF } from './Commands/validate_pdfs';
 import { ValidateTypes } from './Commands/validate_types';
 
 
@@ -27,15 +26,6 @@ export default class ValidationPlugin extends Plugin {
 			name: 'Validate Types',
 			callback: () => {
 				this.validateTypes();
-			}
-		});
-
-		// Command: Validate PDFs
-		this.addCommand({
-			id: 'validate-pdfs',
-			name: 'Validate PDFs',
-			callback: () => {
-				this.validatePDFs();
 			}
 		});
 
@@ -66,24 +56,13 @@ export default class ValidationPlugin extends Plugin {
 
 
 	validateEverything() {
-		this.validateEverythingAsync();
-	}
-
-	async validateEverythingAsync() {
-		const pdfHandler = new ValidatePDF(this.app);
-		await pdfHandler.validatePDFsAsync(this.settings);
-		const validateHandler = new ValidateTypes(this.app);
-		await validateHandler.validateTypesAsync(this.settings);
+		const handler = new ValidateTypes(this.app);
+		handler.validateTypesAsync(this.settings);
 	}
 
 	validateTypes() {
 		const handler = new ValidateTypes(this.app);
 		handler.validateTypesAsync(this.settings);
-	}
-
-	validatePDFs() {
-		const handler = new ValidatePDF(this.app);
-		handler.validatePDFsAsync(this.settings);
 	}
 
 	createObject() {

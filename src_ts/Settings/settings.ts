@@ -1,6 +1,5 @@
-import { App, PluginSettingTab, Setting, normalizePath } from 'obsidian';
+import { App, PluginSettingTab, Setting } from 'obsidian';
 import ValidationPlugin from '../main';
-import { FileSuggest, FolderSuggest } from './abstract_suggester';
 import { TemplateConfig } from './config_data';
 
 export class ValidationSettingTab extends PluginSettingTab {
@@ -49,57 +48,6 @@ export class ValidationSettingTab extends PluginSettingTab {
 				}));
 		
 		this.createArraySettings(containerEl);
-
-		this.pdfSettings(containerEl);
-	}
-
-	private pdfSettings(containerEl: HTMLElement) {
-		containerEl.createEl('h3', { text: 'PDF Validation Settings' });
-
-		new Setting(containerEl)  
-			.setName('PDF Source Folder')
-			.setDesc('Folder to scan for PDFs')
-			.addSearch(search => {
-				new FolderSuggest(this.plugin.app, search.inputEl);
-
-				search.setValue(this.plugin.settings.pdfSourceFolder)
-					.setPlaceholder('Search source folder')  
-					.onChange(async (value) => {  
-						this.plugin.settings.pdfSourceFolder = normalizePath(value.trim());  
-						await this.plugin.saveSettings();
-					});
-			});
-
-		new Setting(containerEl)
-			.setName('PDF Destination Folder')
-			.setDesc('Folder to move processed PDFs')
-			.addSearch(search => {
-				new FolderSuggest(this.plugin.app, search.inputEl);
-
-				search.setValue(this.plugin.settings.pdfDestFolder)
-					.setPlaceholder('Search target folder')  
-					.onChange(async (value) => {  
-						this.plugin.settings.pdfDestFolder = normalizePath(value.trim());  
-						await this.plugin.saveSettings();
-					});  
-				
-			});
-
-		new Setting(containerEl)
-			.setName('PDF Template')
-			.setDesc('Template to use for PDF notes')
-			.addSearch(search => {
-				new FileSuggest(this.plugin.app, search.inputEl);
-
-				search.setValue(this.plugin.settings.pdfTemplate)
-					.setPlaceholder('Search a template')  
-					.onChange(async (value) => { 
-						this.plugin.settings.pdfTemplate = value; 
-						await this.plugin.saveSettings();
-					}
-				);  
-				
-			});
 	}
 
 	private createArraySettings(containerEl: HTMLElement) {

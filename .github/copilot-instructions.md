@@ -3,7 +3,6 @@
 ## Purpose
 This repository is an Obsidian plugin that enforces note consistency through:
 - YAML frontmatter validation for configured note folders
-- PDF-note synchronization and note generation
 - Object creation from user-defined templates
 
 Read [README.md](../README.md) for product-level context. Keep this file focused on contributor and agent execution behavior.
@@ -28,7 +27,6 @@ Notes:
 - Commands:
   - [src_ts/Commands/create_object.ts](../src_ts/Commands/create_object.ts)
   - [src_ts/Commands/validate_types.ts](../src_ts/Commands/validate_types.ts)
-  - [src_ts/Commands/validate_pdfs.ts](../src_ts/Commands/validate_pdfs.ts)
 - Settings UI and data:
   - [src_ts/Settings/settings.ts](../src_ts/Settings/settings.ts)
   - [src_ts/Settings/config_data.ts](../src_ts/Settings/config_data.ts)
@@ -63,15 +61,6 @@ Validation behavior in [src_ts/Commands/validate_types.ts](../src_ts/Commands/va
 - Missing keys in notes are filled from template values.
 
 If you change this behavior, update README documentation accordingly.
-
-## PDF Validation Rules
-Behavior in [src_ts/Commands/validate_pdfs.ts](../src_ts/Commands/validate_pdfs.ts):
-- Existing notes in configured destination folder are checked against resource-link.
-- PDFs may be renamed to match note names.
-- Orphaned notes may be deleted when linked PDFs are missing.
-- New notes can be created from a template for PDFs found in source folder without corresponding notes.
-
-Treat these operations as potentially destructive. Preserve clear user feedback and defensive checks.
 
 ## Build and Runtime Constraints
 - Bundle output is main.js in CommonJS format via esbuild.
