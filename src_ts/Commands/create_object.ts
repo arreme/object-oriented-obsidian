@@ -38,7 +38,8 @@ export class CreateObjectHandler {
 		if (!title) return;
 
         const creationFolder = destinationFolderPath ?? this.getCreationFolderPath();
-        const filePath = creationFolder ? `${creationFolder}/${title}.md` : `${title}.md`;
+        const fileName = this.buildFileName(title, template.nameSuffix);
+        const filePath = creationFolder ? `${creationFolder}/${fileName}.md` : `${fileName}.md`;
 		
 		try {
 			const file = await vault.create(filePath, templateContent);
@@ -51,6 +52,15 @@ export class CreateObjectHandler {
 			new Notice(`Error creating file: ${(error as Error).message}`);
 		}
 	}
+
+    private buildFileName(title: string, nameSuffix: string): string {
+        const trimmedSuffix = nameSuffix.trim();
+        if (!trimmedSuffix || title.endsWith(trimmedSuffix)) {
+            return title;
+        }
+
+        return `${title}${trimmedSuffix}`;
+    }
 
     private getCreationFolderPath(): string {
         const activeFile = this.app.workspace.getActiveFile();
