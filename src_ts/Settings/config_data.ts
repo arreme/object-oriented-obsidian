@@ -2,7 +2,6 @@ export interface TemplateConfig {
 	folded: boolean;
 	createNotes: boolean;
 	propertyTypeValue: string;
-	nameSuffix: string;
 	objectTemplate: string;
 	
 }

@@ -41,8 +41,7 @@ export class CreateObjectHandler {
 		if (!title) return;
 
         const creationFolder = destinationFolderPath ?? this.getCreationFolderPath();
-        const fileName = this.buildFileName(title, template.nameSuffix);
-        const filePath = creationFolder ? `${creationFolder}/${fileName}.md` : `${fileName}.md`;
+        const filePath = creationFolder ? `${creationFolder}/${title}.md` : `${title}.md`;
 		
 		try {
 			const file = await vault.create(filePath, templateContent);
@@ -77,15 +76,6 @@ export class CreateObjectHandler {
         const nextYaml = [`${targetProperty}: ${propertyTypeValue}`, ...filtered].join('\n');
 
         return `---\n${nextYaml}\n---${body}`;
-    }
-
-    private buildFileName(title: string, nameSuffix: string): string {
-        const trimmedSuffix = nameSuffix.trim();
-        if (!trimmedSuffix || title.endsWith(trimmedSuffix)) {
-            return title;
-        }
-
-        return `${title}${trimmedSuffix}`;
     }
 
     private getCreationFolderPath(): string {

@@ -1,4 +1,4 @@
-import { App, Notice, TFile, parseYaml } from 'obsidian';
+import { App, Notice, parseYaml } from 'obsidian';
 import { ValidationPluginSettings } from 'src_ts/Settings/config_data';
 
 export class ValidateTypes {
@@ -30,8 +30,7 @@ export class ValidateTypes {
                     fileManager,
                     template.objectTemplate,
                     targetProperty,
-                    template.propertyTypeValue.trim(),
-                    template.nameSuffix ?? ''
+                    template.propertyTypeValue.trim()
                 );
                 totalCount += count;
             } catch (error) {
@@ -47,8 +46,7 @@ export class ValidateTypes {
         fileManager: any,
         templateContent: string,
         targetProperty: string,
-        propertyTypeValue: string,
-        nameSuffix: string
+        propertyTypeValue: string
     ): Promise<number> {
         // Parse template frontmatter using Obsidian's built-in parser
         const templateFM = this.parseFrontmatterWithObsidian(templateContent);
@@ -133,35 +131,13 @@ export class ValidateTypes {
                 continue;
             }
 
-            const renamed = await this.ensureNameSuffix(vault, file, nameSuffix);
-
-            if (frontmatterModified || renamed) {
+            if (frontmatterModified) {
                 fileCount++;
             }
         }
         
         new Notice(`Validated ${fileCount} files for ${targetProperty}: ${propertyTypeValue}`);
         return fileCount;
-    }
-
-    private async ensureNameSuffix(vault: any, file: TFile, nameSuffix: string): Promise<boolean> {
-        const trimmedSuffix = nameSuffix.trim();
-        if (!trimmedSuffix || file.basename.endsWith(trimmedSuffix)) {
-            return false;
-        }
-
-        const parentPath = file.parent?.path;
-        const renamedPath = parentPath
-            ? `${parentPath}/${file.basename}${trimmedSuffix}.${file.extension}`
-            : `${file.basename}${trimmedSuffix}.${file.extension}`;
-
-        if (vault.getAbstractFileByPath(renamedPath)) {
-            console.warn(`Cannot rename ${file.path} to ${renamedPath}: target already exists.`);
-            return false;
-        }
-
-        await vault.rename(file, renamedPath);
-        return true;
     }
 
     private parseFrontmatterWithObsidian(content: string): Record<string, any> | null {

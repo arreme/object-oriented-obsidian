@@ -48,7 +48,6 @@ export class ValidationSettingTab extends PluginSettingTab {
 					this.plugin.settings.templates.push({
 						folded: false,
 						propertyTypeValue: '',
-						nameSuffix: '',
 						objectTemplate: '',
 						createNotes: true,
 					});
@@ -112,18 +111,6 @@ export class ValidationSettingTab extends PluginSettingTab {
 						this.plugin.settings.templates[index].propertyTypeValue = trimmed;
 						await this.plugin.saveSettings();
 						titleElement.textContent = trimmed || `Object ${index + 1}`;
-					});
-			});
-
-		new Setting(bodyDiv)
-			.setName('Name Sufix')
-			.setDesc('Appended to matching file names during validation (example: -(T))')
-			.addText(text => {
-				text.setValue(template.nameSuffix || '')
-					.setPlaceholder('-(T)')
-					.onChange(async (value) => {
-						this.plugin.settings.templates[index].nameSuffix = value;
-						await this.plugin.saveSettings();
 					});
 			});
 
