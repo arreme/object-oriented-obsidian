@@ -9,9 +9,11 @@ export interface TemplateConfig {
 export interface ValidationPluginSettings {
 	templates: TemplateConfig[];
 	targetProperty: string;
+	ignoreFolders: string[];
 }
 
 export const DEFAULT_SETTINGS: ValidationPluginSettings = {
 	templates: [],
-	targetProperty: ''
+	targetProperty: '',
+	ignoreFolders: []
 };

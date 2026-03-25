@@ -1,6 +1,7 @@
-import { App, PluginSettingTab, Setting } from 'obsidian';
+import { App, PluginSettingTab, Setting, normalizePath } from 'obsidian';
 import ValidationPlugin from '../main';
 import { TemplateConfig } from './config_data';
+import { FolderSuggest } from './abstract_suggester';
 
 export class ValidationSettingTab extends PluginSettingTab {
 	plugin: ValidationPlugin;
@@ -40,6 +41,19 @@ export class ValidationSettingTab extends PluginSettingTab {
 					this.display();
 				}));
 
+		containerEl.createEl('h3', { text: 'Ignore Folders' });
+		new Setting(containerEl)
+			.setDesc('Files inside these folders are skipped during validation.')
+			.addButton(button => button
+				.setButtonText('Add Ignore Folder')
+				.onClick(async () => {
+					this.plugin.settings.ignoreFolders.push('');
+					await this.plugin.saveSettings();
+					this.display();
+				}));
+
+		this.renderIgnoreFolders(containerEl);
+
 		new Setting(tittleContainer)
 			.addButton(button => button
 				.setButtonText('Add Object')
@@ -62,6 +76,31 @@ export class ValidationSettingTab extends PluginSettingTab {
 		this.plugin.settings.templates.forEach(
 			(template, index) => this.processTemplate(containerEl, template, index)
 		);
+	}
+
+	private renderIgnoreFolders(containerEl: HTMLElement) {
+		this.plugin.settings.ignoreFolders.forEach((folder, index) => {
+			new Setting(containerEl)
+				.setName(`Ignore folder ${index + 1}`)
+				.addSearch(search => {
+					new FolderSuggest(this.plugin.app, search.inputEl);
+					search
+						.setValue(folder)
+						.setPlaceholder('path/to/folder')
+						.onChange(async (value) => {
+							this.plugin.settings.ignoreFolders[index] = normalizePath(value.trim());
+							await this.plugin.saveSettings();
+						});
+				})
+				.addButton(button => button
+					.setButtonText('Remove')
+					.setWarning()
+					.onClick(async () => {
+						this.plugin.settings.ignoreFolders.splice(index, 1);
+						await this.plugin.saveSettings();
+						this.display();
+					}));
+		});
 	}
 
 	private processTemplate(containerEl: HTMLElement, template: TemplateConfig, index: number) {

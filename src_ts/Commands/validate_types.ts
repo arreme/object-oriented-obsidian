@@ -12,6 +12,9 @@ export class ValidateTypes {
         const { vault, fileManager } = this.app;
         let totalCount = 0;
         const targetProperty = settings.targetProperty?.trim();
+        const ignoreFolders = (settings.ignoreFolders || [])
+            .map((folder) => folder.trim())
+            .filter((folder) => folder.length > 0);
 
         if (!targetProperty) {
             new Notice('Target property is not configured. Set it in plugin settings.');
@@ -30,7 +33,8 @@ export class ValidateTypes {
                     fileManager,
                     template.objectTemplate,
                     targetProperty,
-                    template.propertyTypeValue.trim()
+                    template.propertyTypeValue.trim(),
+                    ignoreFolders
                 );
                 totalCount += count;
             } catch (error) {
@@ -46,7 +50,8 @@ export class ValidateTypes {
         fileManager: any,
         templateContent: string,
         targetProperty: string,
-        propertyTypeValue: string
+        propertyTypeValue: string,
+        ignoreFolders: string[]
     ): Promise<number> {
         // Parse template frontmatter using Obsidian's built-in parser
         const templateFM = this.parseFrontmatterWithObsidian(templateContent);
@@ -65,7 +70,9 @@ export class ValidateTypes {
         };
 
         // Get all markdown files in vault and validate only those matching targetProperty/propertyTypeValue
-        const files = vault.getFiles().filter((f: any) => f.extension === "md");
+        const files = vault.getFiles().filter(
+            (f: any) => f.extension === "md" && !this.isIgnoredFile(f.path, ignoreFolders)
+        );
 
         let fileCount = 0;
 
@@ -182,5 +189,9 @@ export class ValidateTypes {
         }
 
         return keys;
+    }
+
+    private isIgnoredFile(filePath: string, ignoreFolders: string[]): boolean {
+        return ignoreFolders.some((folder) => filePath === folder || filePath.startsWith(`${folder}/`));
     }
 }
