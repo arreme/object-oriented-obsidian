@@ -6,7 +6,7 @@ import { ValidateTypes } from './Commands/validate_types';
 
 
 export default class ValidationPlugin extends Plugin {
-	settings: ValidationPluginSettings;
+	settings!: ValidationPluginSettings;
 
 	async onload() {
 		await this.loadSettings();

@@ -129,7 +129,7 @@ class TemplateSuggestModal extends SuggestModal<TemplateConfig> {
 
 class TitleInputModal extends Modal {
     onSubmit: (title: string) => void;
-    titleInput: HTMLInputElement;
+    titleInput!: HTMLInputElement;
 
     constructor(app: App, onSubmit: (title: string) => void) {
         super(app);
