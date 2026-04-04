@@ -1,5 +1,5 @@
 import { App, Notice, parseYaml } from 'obsidian';
-import { ValidationPluginSettings } from 'src_ts/Settings/config_data';
+import { ValidationPluginSettings, ScopedTemplateConfig } from '../Settings/config_data';
 
 export class ValidateTypes {
     app: App;
@@ -43,6 +43,38 @@ export class ValidateTypes {
         }
 
         new Notice(`Validation complete. Reviewed ${totalCount} files.`);
+
+        // Validate scoped templates
+        let scopedTotalCount = 0;
+        for (const scopedTemplate of (settings.scopedTemplates || [])) {
+            if (!scopedTemplate.objectTemplate || !scopedTemplate.targetFolders?.length) {
+                console.warn('Skipping incomplete scoped template: missing object template or target folders.');
+                continue;
+            }
+
+            const validFolders = scopedTemplate.targetFolders
+                .map(f => f.trim())
+                .filter(f => f.length > 0);
+
+            if (validFolders.length === 0) continue;
+
+            try {
+                const count = await this.validateScopedTemplate(
+                    vault,
+                    fileManager,
+                    scopedTemplate,
+                    validFolders,
+                    ignoreFolders
+                );
+                scopedTotalCount += count;
+            } catch (error) {
+                console.error(`Error validating scoped template:`, error);
+            }
+        }
+
+        if (scopedTotalCount > 0) {
+            new Notice(`Scoped validation complete. Reviewed ${scopedTotalCount} files.`);
+        }
     }
 
     private async validateTemplate(
@@ -193,5 +225,83 @@ export class ValidateTypes {
 
     private isIgnoredFile(filePath: string, ignoreFolders: string[]): boolean {
         return ignoreFolders.some((folder) => filePath === folder || filePath.startsWith(`${folder}/`));
+    }
+
+    private isInTargetFolders(filePath: string, targetFolders: string[]): boolean {
+        return targetFolders.some((folder) => filePath.startsWith(`${folder}/`));
+    }
+
+    private async validateScopedTemplate(
+        vault: any,
+        fileManager: any,
+        scopedTemplate: ScopedTemplateConfig,
+        targetFolders: string[],
+        ignoreFolders: string[]
+    ): Promise<number> {
+        const templateFM = this.parseFrontmatterWithObsidian(scopedTemplate.objectTemplate);
+        if (!templateFM) {
+            throw new Error('Scoped template has no valid YAML frontmatter.');
+        }
+
+        const orderedKeys = this.extractOrderedKeysFromFrontmatter(scopedTemplate.objectTemplate);
+        const templateValues: Record<string, unknown> = { ...templateFM };
+
+        const files = vault.getFiles().filter(
+            (f: any) => f.extension === 'md'
+                && this.isInTargetFolders(f.path, targetFolders)
+                && !this.isIgnoredFile(f.path, ignoreFolders)
+        );
+
+        let fileCount = 0;
+
+        for (const file of files) {
+            let frontmatterModified = false;
+
+            await fileManager.processFrontMatter(file, (fm: any) => {
+                if (!fm) return;
+
+                const currentFm = { ...fm };
+                const currentKeys = Object.keys(currentFm);
+                let modified = currentKeys.length !== orderedKeys.length;
+
+                if (!modified) {
+                    for (let i = 0; i < currentKeys.length; i++) {
+                        if (currentKeys[i] !== orderedKeys[i]) {
+                            modified = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (!modified) {
+                    for (const key of orderedKeys) {
+                        if (!(key in currentFm)) {
+                            modified = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (!modified) return;
+
+                for (const key of Object.keys(fm)) {
+                    delete fm[key];
+                }
+
+                for (const key of orderedKeys) {
+                    fm[key] = key in currentFm ? currentFm[key] : templateValues[key];
+                }
+
+                frontmatterModified = true;
+            });
+
+            if (frontmatterModified) {
+                fileCount++;
+            }
+        }
+
+        const folderLabel = targetFolders.join(', ');
+        new Notice(`Validated ${fileCount} files in scoped folders: ${folderLabel}`);
+        return fileCount;
     }
 }
